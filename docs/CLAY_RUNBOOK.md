@@ -12,3 +12,19 @@ Start the Growth trial in week 1. It runs 14 days from activation and only this 
 7. **Evidence.** Keep the 90-second recording of the table building, the CSV export, and a screenshot of the column configuration. Put them under `docs/evidence/` and link from the README.
 
 Avoid: Claygent for deterministic lookups, a Clay table as the data store, any Clay call at demo time.
+
+## Exact column setup (quick version)
+
+Seed: import `corpus/clay_seed.csv` (25 candidates, written from memory, not verified; the HTTP columns below are what verify them). None are among SWE-bench Verified's 12 repos. Row cap on trial is 50, so this fits.
+
+Add an `Authorization: Bearer <your GitHub token>` header to every HTTP API column below (search is capped at 10 requests/min without one).
+
+1. **Cheap, column `gh`:** HTTP API `GET https://api.github.com/repos/{{repo}}`. Pull out `stargazers_count` as `stars`, `open_issues_count` as `open_issues`, `language`.
+2. **Cheap, column `actions`:** `GET https://api.github.com/repos/{{repo}}/actions/workflows`. Pull `total_count` as `uses_actions` (true if > 0).
+3. **Expensive, column `fixes_links`:** `GET https://api.github.com/search/issues?q=repo:{{repo}}+is:pr+is:merged+"fixes+%23"+in:body&per_page=1`. Pull `total_count`. **Conditional run:** only when `language == "Python"` and `stars >= 1000` and `uses_actions` is true. Keep rows with `fixes_links >= 30`.
+4. **Use AI, column `domain`** (run only on survivors): "Classify this Python project into one of: web framework, HTTP/networking, data/scientific, CLI/devtools, packaging, ML, database/ORM, async/distributed, security, docs/imaging. Repo: {{repo}}. Answer with the label only."
+5. **Choose held-out:** from the survivors, mark 2 or more `held_out = true`, in different domains.
+6. **Export CSV** with columns `repo,stars,open_issues,language,uses_actions,fixes_links,domain,held_out` and save as `corpus/repos.csv`.
+7. **Evidence:** 90-second recording of steps 1 to 6, the CSV export, and a screenshot of the column config. Save under `docs/evidence/`.
+
+Cross-check any repo's real link count with `ch harvest --repo owner/name` (prints instances found).
