@@ -180,7 +180,8 @@ def swebench(
 @app.command()
 def split(
     instances: list[Path] = typer.Argument(..., help="Instance parquet files (all sources share one time axis)"),
-    held_out: list[str] = typer.Option([], "--held-out", help="Repos used only at evaluation time"),
+    held_out: list[str] = typer.Option([], "--held-out", help="Repos used only at evaluation time (default: held_out=true rows in repos.csv)"),
+    repos_csv: Path = typer.Option(CORPUS / "repos.csv"),
     out: Path = typer.Option(CORPUS / "split.json"),
     quantile: float = typer.Option(0.5),
 ):
@@ -188,6 +189,11 @@ def split(
     from . import split as sp
 
     df = pd.concat([pd.read_parquet(p) for p in instances])
+    if not held_out and repos_csv.exists():
+        c = pd.read_csv(repos_csv)
+        held_out = c.loc[c["held_out"].astype(str).str.lower() == "true", "repo"].tolist()
+    if len(held_out) < 2:
+        raise typer.BadParameter("PRD requires at least 2 held-out repos (use --held-out or set held_out in repos.csv)")
     s = sp.make_split(df, held_out, quantile)
     sp.save(s, out)
     typer.echo(json.dumps(s, indent=1))

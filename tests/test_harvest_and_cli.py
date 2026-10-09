@@ -86,3 +86,26 @@ def test_replay_snapshots_before_fix_and_grades(fixrepo, tmp_path, monkeypatch):
     assert res.exit_code == 0, res.output
     assert "the fix is NOT in the index" in res.stdout and "REPLAY vs merged fix" in res.stdout
     assert "pkg/parser.py" in res.stdout and "lower bound" in res.stdout
+
+
+def test_github_client_waits_out_rate_limit_then_succeeds():
+    calls = {"n": 0}
+
+    def handler(req):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(403, headers={"x-ratelimit-remaining": "0", "x-ratelimit-reset": "0"}, json={"message": "rate limit"})
+        return httpx.Response(200, json={"ok": True})
+
+    waits = []
+    gh = GitHub(client=httpx.Client(transport=httpx.MockTransport(handler)))
+    assert gh.get("/x", _sleep=waits.append) == {"ok": True} and len(waits) == 1 and calls["n"] == 2
+
+
+def test_github_client_does_not_retry_real_403():
+    gh = GitHub(client=httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(403, json={"message": "forbidden"}))))
+    try:
+        gh.get("/x", _sleep=lambda s: None)
+        assert False
+    except httpx.HTTPStatusError:
+        pass

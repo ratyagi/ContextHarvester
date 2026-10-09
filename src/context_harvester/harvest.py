@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import os
 import re
+import sys
+import time
 from dataclasses import dataclass, asdict
 
 import httpx
@@ -31,10 +33,23 @@ class GitHub:
             headers["Authorization"] = f"Bearer {token}"
         self.c = client or httpx.Client(headers=headers, timeout=30, follow_redirects=True)
 
-    def get(self, path: str, **params):
-        r = self.c.get(path if path.startswith("http") else API + path, params=params)
-        r.raise_for_status()
-        return r.json()
+    def get(self, path: str, _sleep=time.sleep, **params):
+        """GET with rate-limit handling: wait out a spent quota instead of failing (or silently skipping)."""
+        for attempt in range(4):
+            r = self.c.get(path if path.startswith("http") else API + path, params=params)
+            limited = r.status_code in (403, 429) and (
+                r.headers.get("x-ratelimit-remaining") == "0" or "retry-after" in r.headers
+            )
+            if not limited or attempt == 3:
+                r.raise_for_status()
+                return r.json()
+            if "retry-after" in r.headers:
+                wait = float(r.headers["retry-after"])
+            else:
+                wait = max(0.0, float(r.headers.get("x-ratelimit-reset", 0)) - time.time())
+            wait = min(wait + 2, 3700)
+            print(f"GitHub rate limit hit; waiting {wait:.0f}s", file=sys.stderr)
+            _sleep(wait)
 
     def paged(self, path: str, limit: int, **params):
         out, page = [], 1
@@ -104,7 +119,8 @@ def harvest_repo(gh: GitHub, repo: str, max_instances: int = 60, scan_prs: int =
                 continue
             try:
                 inst = build_instance(gh, repo, pr, num)
-            except httpx.HTTPError:
+            except httpx.HTTPError as e:  # logged, never silent
+                print(f"skip {repo}#{num}: {e}", file=sys.stderr)
                 continue
             if inst:
                 seen.add(num)

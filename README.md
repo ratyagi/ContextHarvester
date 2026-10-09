@@ -22,7 +22,7 @@ Rerank uses the first available provider among `GEMINI_API_KEY`, `MISTRAL_API_KE
 ```bash
 ch swebench                                           # SWE-bench Verified -> corpus/instances_swebench.parquet
 ch harvest                                            # corpus/repos.csv (from Clay) -> corpus/instances_harvested.parquet
-ch split corpus/instances_*.parquet --held-out a/b --held-out c/d   # freeze cutoff + held-out repos, commit split.json
+ch split corpus/instances_*.parquet               # freeze cutoff; held-out repos come from repos.csv; commit split.json
 ch tune corpus/instances_*.parquet                    # dev instances only (before cutoff, non-held-out)
 ch eval corpus/instances_swebench.parquet --out results/swebench --web-data web/data/swebench
 ch eval corpus/instances_harvested.parquet --out results/harvested --web-data web/data/harvested

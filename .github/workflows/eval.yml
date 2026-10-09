@@ -1,5 +1,5 @@
 # Runs the full evaluation on public repos and commits Parquet results + results page data.
-# Run `ch split` and `ch tune` first (locally or via dispatch) and commit corpus/split.json and corpus/tuned_params.json.
+# Run the collect and tune workflows first (they commit the instance tables, split.json and tuned_params.json).
 name: eval
 on: { workflow_dispatch: {} }
 permissions: { contents: write }
@@ -15,9 +15,9 @@ jobs:
       - uses: actions/cache@v4
         with: { path: .cache, key: "ch-cache-${{ github.run_id }}", restore-keys: "ch-cache-" }
       - run: ch eval corpus/instances_swebench.parquet --out results/swebench --web-data web/data/swebench
-        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        env: { GITHUB_TOKEN: "${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}" }
       - run: ch eval corpus/instances_harvested.parquet --out results/harvested --web-data web/data/harvested
-        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        env: { GITHUB_TOKEN: "${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}" }
       - run: python scripts/merge_results.py
       - name: commit results
         run: |

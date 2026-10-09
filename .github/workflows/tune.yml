@@ -1,0 +1,23 @@
+# Freezes the forward time split + held-out repos, then tunes on DEV instances only. Commits both files.
+name: tune
+on: { workflow_dispatch: {} }
+permissions: { contents: write }
+jobs:
+  tune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu
+      - uses: actions/cache@v4
+        with: { path: .cache, key: "ch-cache-${{ github.run_id }}", restore-keys: "ch-cache-" }
+      - run: ch split corpus/instances_swebench.parquet corpus/instances_harvested.parquet
+      - run: ch tune corpus/instances_swebench.parquet corpus/instances_harvested.parquet --limit 15
+        env: { GITHUB_TOKEN: "${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}" }
+      - name: commit split and tuned params
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add corpus/split.json corpus/tuned_params.json corpus/tuning_grid.parquet
+          git diff --cached --quiet || (git commit -m "tune: freeze split, tune on dev only" && git push)

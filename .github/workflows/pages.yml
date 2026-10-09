@@ -1,6 +1,6 @@
 name: pages
 on:
-  push: { branches: [main], paths: ["web/**"] }
+  push: { paths: ["web/**"] }   # any branch; Pages deployment rules still apply
   workflow_dispatch:
 permissions: { contents: read, pages: write, id-token: write }
 jobs:
