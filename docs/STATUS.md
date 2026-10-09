@@ -21,7 +21,7 @@ The session that built this has an egress policy that blocks `github.com` (other
 
 ## Pipeline stages
 
-Snapshot, lexical, semantic, structural, fusion, rerank, score: all built and tested. Rerank and the provider-fallback layer are tested with mocks only (no live API calls were possible).
+Snapshot, lexical, semantic, structural, fusion, rerank, score: all built and tested. Rerank, the provider-fallback layer, the GitHub harvester, and the `rank` and `replay` commands are tested with mocks and a local repo only (no live API calls or real clones were possible). The MiniLM embedder has never been loaded.
 
 ## Evaluation protocol
 
