@@ -1,0 +1,8 @@
+{
+  "cutoff": "2022-05-06T21:03:37+00:00",
+  "held_out_repos": [
+    "networkx/networkx",
+    "tornadoweb/tornado",
+    "urllib3/urllib3"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "rrf_k": 20.0,
+  "graph_weight": 0.75,
+  "n_seed": 10.0,
+  "max_per_seed": 10.0,
+  "reverse_weight": 0.5
+}
