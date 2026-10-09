@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "context-harvester"
+version = "0.1.0"
+description = "Ranked minimal file set a coding agent needs to read to fix an issue, with a measured recall@10."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "typer>=0.12",
+  "rank-bm25>=0.2.2",
+  "faiss-cpu>=1.8",
+  "numpy",
+  "pandas",
+  "pyarrow",
+  "sentence-transformers>=3.0",
+  "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+ch = "context_harvester.cli:app"
+context-harvester = "context_harvester.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

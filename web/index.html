@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Context Harvester Results</title>
+<style>
+  :root { --bg:#fff; --fg:#1b1b1f; --mut:#6b6b76; --line:#e3e3e8; --acc:#2563eb; --card:#f7f7f9; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14141a; --fg:#ececf1; --mut:#9a9aa8; --line:#2c2c36; --acc:#6ea0ff; --card:#1c1c24; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,sans-serif; }
+  main { max-width:960px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:26px; margin:0 0 4px; } h2 { font-size:18px; margin:32px 0 8px; }
+  p, li { color:var(--mut); } .note { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 14px; color:var(--fg); }
+  .row { display:flex; flex-wrap:wrap; gap:12px; margin:16px 0; } label { font-size:13px; color:var(--mut); display:flex; flex-direction:column; gap:4px; }
+  select { padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
+  table { border-collapse:collapse; width:100%; font-size:14px; } th, td { text-align:right; padding:7px 8px; border-bottom:1px solid var(--line); }
+  th:first-child, td:first-child { text-align:left; } th { color:var(--mut); font-weight:600; } .scroll { overflow-x:auto; }
+  svg { width:100%; height:auto; } .axis { stroke:var(--line); } .lbl { fill:var(--mut); font-size:11px; }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; font-size:13px; color:var(--mut); } .legend i { display:inline-block; width:12px; height:3px; margin-right:6px; vertical-align:middle; }
+  code { background:var(--card); padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Context Harvester</h1>
+  <p>Ranked minimal file set a coding agent needs to read to fix an issue. File-level recall against the files the merged fix touched.</p>
+  <div class="note"><b>Read this first.</b> Recall against changed files is a <b>lower bound</b> on the true target. An agent must read more than it edits, so a highly ranked file that is absent from the gold set is not necessarily a false positive. Sources are never pooled: SWE-bench Verified is likely over-represented in model training data, so the self-harvested set is the control.</div>
+  <div id="empty" class="note" style="display:none;margin-top:16px">No results have been generated yet. Run <code>ch eval</code> (see the README) and this page fills in.</div>
+  <div id="app" style="display:none">
+    <div class="row">
+      <label>Source <select id="source"></select></label>
+      <label>Group <select id="group"></select></label>
+      <label>Gold set <select id="gold"><option value="filtered">filtered (incidental files removed)</option><option value="unfiltered">unfiltered</option></select></label>
+      <label>Issues <select id="subset"><option value="all">all</option><option value="clean">without fix text / file names</option></select></label>
+    </div>
+    <h2>Recall@k curves</h2>
+    <div id="chart"></div><div class="legend" id="legend"></div>
+    <h2>Ablation</h2>
+    <div class="scroll"><table id="ablation"></table></div>
+    <h2>Recall at a fixed token budget</h2>
+    <div class="scroll"><table id="budget"></table></div>
+    <h2>Run details</h2>
+    <p id="meta"></p>
+    <div id="excluded"></div>
+  </div>
+</main>
+<script>
+const COLORS = {random:"#9ca3af", bm25:"#d97706", embed:"#059669", "bm25+embed":"#7c3aed", full:"#2563eb"};
+const KS = [1,2,3,5,7,10,15,20,30,50], BUDGETS = [10,20,40,80,160];
+const $ = id => document.getElementById(id);
+const f3 = x => x == null ? "n/a" : x.toFixed(3);
+let data;
+fetch("data/results.json").then(r => r.ok ? r.json() : Promise.reject()).then(d => { data = d; init(); }).catch(() => { $("empty").style.display = ""; });
+
+function uniq(k) { return [...new Set(data.summary.map(r => r[k]))].sort(); }
+function init() {
+  $("app").style.display = "";
+  for (const [id, k] of [["source","source"],["group","group"]]) $(id).innerHTML = uniq(k).map(v => `<option>${v}</option>`).join("");
+  for (const id of ["source","group","gold","subset"]) $(id).onchange = render;
+  render();
+}
+function rows() {
+  return data.summary.filter(r => r.source == $("source").value && r.group == $("group").value && r.gold_mode == $("gold").value && r.subset == $("subset").value);
+}
+function render() {
+  const rs = rows(), order = Object.keys(data.labels);
+  const by = Object.fromEntries(rs.map(r => [r.method, r]));
+  const present = order.filter(m => by[m]);
+  $("ablation").innerHTML = "<tr><th>Configuration</th><th>n</th><th>recall@5</th><th>recall@10 (95% CI)</th><th>recall@20</th><th>margin vs BM25 (95% CI)</th><th>median tokens to all gold</th></tr>" +
+    present.map(m => { const r = by[m]; return `<tr><td>${data.labels[m]}</td><td>${r.n}</td><td>${f3(r["recall@5"])}</td><td>${f3(r["recall@10"])} (${f3(r["recall@10_lo"])}, ${f3(r["recall@10_hi"])})</td><td>${f3(r["recall@20"])}</td><td>${m=="bm25"?"-":(r.margin_vs_bm25>=0?"+":"")+f3(r.margin_vs_bm25)+" ("+f3(r.margin_lo)+", "+f3(r.margin_hi)+")"}</td><td>${r.tokens_to_all_median==null?"n/a":Math.round(r.tokens_to_all_median)}</td></tr>`; }).join("");
+  $("budget").innerHTML = "<tr><th>Configuration</th>" + BUDGETS.map(b => `<th>${b}k tokens</th>`).join("") + "</tr>" +
+    present.map(m => `<tr><td>${data.labels[m]}</td>` + BUDGETS.map(b => `<td>${f3(by[m][`recall@${b}k_tok`])}</td>`).join("") + "</tr>").join("");
+  chart(present, by);
+  $("legend").innerHTML = present.map(m => `<span><i style="background:${COLORS[m]}"></i>${data.labels[m]}</span>`).join("");
+  const mt = data.meta || {}; $("meta").textContent = `Cutoff ${mt.split ? mt.split.cutoff : "?"}; held-out repos: ${mt.split ? (mt.split.held_out_repos.join(", ") || "none") : "?"}; generated ${mt.generated || "?"}.`;
+  const ex = data.excluded || [];
+  $("excluded").innerHTML = ex.length ? `<p>${ex.length} instances excluded (leakage guard failures are labelled LEAKAGE):</p><ul>` + ex.slice(0, 50).map(e => `<li>${e.instance_id}: ${e.reason}</li>`).join("") + "</ul>" : "<p>No instances excluded.</p>";
+}
+function chart(methods, by) {
+  const W = 720, H = 320, L = 44, R = 12, T = 12, B = 32, xs = KS, xmax = Math.log(Math.max(...xs)), xmin = Math.log(Math.min(...xs));
+  const x = k => L + (Math.log(k) - xmin) / (xmax - xmin) * (W - L - R), y = v => T + (1 - v) * (H - T - B);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="recall at k curves">`;
+  for (let v = 0; v <= 1.001; v += 0.2) s += `<line class="axis" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="lbl" x="${L-6}" y="${y(v)+4}" text-anchor="end">${v.toFixed(1)}</text>`;
+  for (const k of xs) s += `<text class="lbl" x="${x(k)}" y="${H-10}" text-anchor="middle">${k}</text>`;
+  s += `<text class="lbl" x="${W/2}" y="${H}" text-anchor="middle">k (files)</text>`;
+  for (const m of methods) {
+    const pts = xs.map(k => [x(k), y(by[m][`recall@${k}`])]);
+    s += `<polyline fill="none" stroke="${COLORS[m]}" stroke-width="${m=="full"?3:2}" points="${pts.map(p => p.join(",")).join(" ")}"/>`;
+  }
+  $("chart").innerHTML = s + "</svg>";
+}
+</script>
+</body>
+</html>
