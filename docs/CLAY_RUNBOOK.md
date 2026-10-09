@@ -2,7 +2,8 @@
 
 Start the Growth trial in week 1. It runs 14 days from activation and only this step needs it.
 
-0. **Day one checks.** Read the real credit allowance and row cap in the dashboard (Clay's pages disagree: 1,000 vs 2,000 credits, 50 vs 200 rows). Test whether the API works on Free before planning around the CLI. Start a screen recording now.
+0. **Day one checks. Observed on the real account (Oct 9, 2026): Trial actions 5K, Trial data credits 1K** (plan page screenshot; save it under `docs/evidence/`). So the PRD's 1,000 vs 2,000 credit question resolves to 1,000 credits plus 5,000 actions. Still unknown: the row cap, and which column types draw on actions vs data credits. Check the meters after the first HTTP column runs, before running the Use AI column.
+   **Original checks:** Read the real credit allowance and row cap in the dashboard (Clay's pages disagree: 1,000 vs 2,000 credits, 50 vs 200 rows). Test whether the API works on Free before planning around the CLI. Start a screen recording now.
 1. **Seed.** One row per candidate Python repository (12 to 20 rows; trial cap is 50 per table).
 2. **Cheap filters first.** HTTP API column to `https://api.github.com/repos/{{repo}}`: `stargazers_count`, `open_issues_count`, `language`. A second HTTP API column to `/repos/{{repo}}/actions/workflows` for `total_count > 0`. Keep Python repos with real activity.
 3. **Expensive filter second.** HTTP API column counting resolvable `Fixes #N` links, gated with conditional run on step 2 passing. You can cross-check the count with `ch harvest --repo owner/name` (prints instances found). Keep repos with enough links (aim for 30 or more).
