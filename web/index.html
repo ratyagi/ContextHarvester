@@ -66,8 +66,8 @@ function render() {
   const rs = rows(), order = Object.keys(data.labels);
   const by = Object.fromEntries(rs.map(r => [r.method, r]));
   const present = order.filter(m => by[m]);
-  $("ablation").innerHTML = "<tr><th>Configuration</th><th>n</th><th>recall@5</th><th>recall@10 (95% CI)</th><th>recall@20</th><th>margin vs BM25 (95% CI)</th><th>median tokens to all gold</th></tr>" +
-    present.map(m => { const r = by[m]; return `<tr><td>${data.labels[m]}</td><td>${r.n}</td><td>${f3(r["recall@5"])}</td><td>${f3(r["recall@10"])} (${f3(r["recall@10_lo"])}, ${f3(r["recall@10_hi"])})</td><td>${f3(r["recall@20"])}</td><td>${m=="bm25"?"-":(r.margin_vs_bm25>=0?"+":"")+f3(r.margin_vs_bm25)+" ("+f3(r.margin_lo)+", "+f3(r.margin_hi)+")"}</td><td>${r.tokens_to_all_median==null?"n/a":Math.round(r.tokens_to_all_median)}</td></tr>`; }).join("");
+  $("ablation").innerHTML = "<tr><th>Configuration</th><th>n</th><th>recall@5</th><th>recall@10 (95% CI)</th><th>recall@20</th><th>margin vs BM25 (95% CI)</th><th>graph contribution: margin vs BM25+emb (95% CI)</th><th>median tokens to all gold</th></tr>" +
+    present.map(m => { const r = by[m]; return `<tr><td>${data.labels[m]}</td><td>${r.n}</td><td>${f3(r["recall@5"])}</td><td>${f3(r["recall@10"])} (${f3(r["recall@10_lo"])}, ${f3(r["recall@10_hi"])})</td><td>${f3(r["recall@20"])}</td><td>${m=="bm25"?"-":(r.margin_vs_bm25>=0?"+":"")+f3(r.margin_vs_bm25)+" ("+f3(r.margin_lo)+", "+f3(r.margin_hi)+")"}</td><td>${m=="full"?(r.margin_vs_fusion>=0?"+":"")+f3(r.margin_vs_fusion)+" ("+f3(r.margin_fusion_lo)+", "+f3(r.margin_fusion_hi)+")":"-"}</td><td>${r.tokens_to_all_median==null?"n/a":Math.round(r.tokens_to_all_median)}</td></tr>`; }).join("");
   $("budget").innerHTML = "<tr><th>Configuration</th>" + BUDGETS.map(b => `<th>${b}k tokens</th>`).join("") + "</tr>" +
     present.map(m => `<tr><td>${data.labels[m]}</td>` + BUDGETS.map(b => `<td>${f3(by[m][`recall@${b}k_tok`])}</td>`).join("") + "</tr>").join("");
   chart(present, by);

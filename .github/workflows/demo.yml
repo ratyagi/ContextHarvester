@@ -1,0 +1,38 @@
+# The 60-second demo: run the ranker on any public repo + issue, then replay a closed issue against its merged fix.
+# Prints wall-clock time for each step. Inputs are chosen by whoever clicks Run workflow.
+name: demo
+on:
+  workflow_dispatch:
+    inputs:
+      repo: { description: "owner/name of a public Python repo", required: true }
+      open_issue: { description: "an open issue number in that repo", required: true }
+      closed_issue: { description: "a closed issue number with a merged Fixes #N PR (optional)", required: false }
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: Pre-download the MiniLM weights (not counted in the timing below)
+        run: python -c "from sentence_transformers import SentenceTransformer as S; S('sentence-transformers/all-MiniLM-L6-v2')"
+      - name: rank (open issue, cold repo)
+        run: |
+          start=$(date +%s)
+          ch rank "${{ inputs.repo }}" "${{ inputs.open_issue }}" | tee rank.txt
+          echo "COLD RANK WALL TIME: $(( $(date +%s) - start ))s" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: replay (closed issue vs merged fix)
+        if: ${{ inputs.closed_issue != '' }}
+        run: |
+          start=$(date +%s)
+          ch replay "${{ inputs.repo }}" "${{ inputs.closed_issue }}" | tee replay.txt
+          echo "REPLAY WALL TIME: $(( $(date +%s) - start ))s" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with: { name: demo-output, path: "*.txt" }

@@ -6,8 +6,11 @@ import pandas as pd
 
 from context_harvester import report
 
-parts = sorted(Path("results").glob("*/summary.parquet"))
-summary = pd.concat([pd.read_parquet(p) for p in parts], ignore_index=True)
+parts = sorted(Path("results").glob("*/per_instance.parquet"))
+# recompute from per-instance rows (cheap) so report changes never need a re-evaluation
+summary = pd.concat([report.summarize(pd.read_parquet(p)) for p in parts], ignore_index=True)
+for p in parts:
+    report.summarize(pd.read_parquet(p)).to_parquet(p.parent / "summary.parquet", index=False)
 metas, excluded = {}, []
 for p in sorted(Path("web/data").glob("*/results.json")):
     d = json.loads(p.read_text())

@@ -40,6 +40,7 @@ def summarize(per: pd.DataFrame) -> pd.DataFrame:
         d = per if subset == "all" else per[~per["leaky"]]
         for (source, group, mode), g in d.groupby(["source", "group", "gold_mode"]):
             bm25 = g[g["method"] == "bm25"].set_index("instance_id")["recall@10"]
+            fusion = g[g["method"] == "bm25+embed"].set_index("instance_id")["recall@10"]
             for m in METHODS:
                 gm = g[g["method"] == m].set_index("instance_id")
                 if gm.empty:
@@ -55,6 +56,10 @@ def summarize(per: pd.DataFrame) -> pd.DataFrame:
                 diff = (gm["recall@10"] - bm25.reindex(gm.index)).dropna().to_numpy()
                 row["margin_vs_bm25"] = float(diff.mean()) if len(diff) else math.nan
                 row["margin_lo"], row["margin_hi"] = _boot_ci(diff) if len(diff) else (math.nan, math.nan)
+                # paired margin over BM25+embeddings: isolates what the import graph contributes
+                gd = (gm["recall@10"] - fusion.reindex(gm.index)).dropna().to_numpy()
+                row["margin_vs_fusion"] = float(gd.mean()) if len(gd) else math.nan
+                row["margin_fusion_lo"], row["margin_fusion_hi"] = _boot_ci(gd) if len(gd) else (math.nan, math.nan)
                 rows.append(row)
     return pd.DataFrame(rows)
 
@@ -70,8 +75,8 @@ def markdown_table(summary: pd.DataFrame, source: str, group: str, subset="all",
     lines = [
         f"**{source}, {group}, {gold_mode} gold, {'all issues' if subset == 'all' else 'issues without fix text/file names'}** (n={int(s.iloc[0].n)})",
         "",
-        "| Configuration | recall@5 | recall@10 (95% CI) | recall@20 | margin vs BM25 (95% CI) | median tokens to all gold |",
-        "|---|---|---|---|---|---|",
+        "| Configuration | recall@5 | recall@10 (95% CI) | recall@20 | margin vs BM25 (95% CI) | graph contribution: margin vs BM25+emb (95% CI) | median tokens to all gold |",
+        "|---|---|---|---|---|---|---|",
     ]
     for m in METHODS:
         r = s[s.method == m]
@@ -79,9 +84,10 @@ def markdown_table(summary: pd.DataFrame, source: str, group: str, subset="all",
             continue
         r = r.iloc[0]
         margin = "-" if m == "bm25" else f"{r.margin_vs_bm25:+.3f} ({fmt(r.margin_lo)}, {fmt(r.margin_hi)})"
+        gmargin = f"{r.margin_vs_fusion:+.3f} ({fmt(r.margin_fusion_lo)}, {fmt(r.margin_fusion_hi)})" if m == "full" else "-"
         lines.append(
             f"| {LABELS[m]} | {fmt(r['recall@5'])} | {fmt(r['recall@10'])} ({fmt(r['recall@10_lo'])}, {fmt(r['recall@10_hi'])}) "
-            f"| {fmt(r['recall@20'])} | {margin} | {fmt(r.tokens_to_all_median, 0)} |"
+            f"| {fmt(r['recall@20'])} | {margin} | {gmargin} | {fmt(r.tokens_to_all_median, 0)} |"
         )
     return "\n".join(lines)
 

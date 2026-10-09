@@ -26,10 +26,10 @@ Without issues that contain a patch or name a gold file: SWE-bench 0.634 (BM25) 
 2. **That result did not replicate on the independent control.** On self-harvested links the full pipeline and BM25 are statistically indistinguishable, overall and on held-out repos. Per repo it is a split: full is ahead on 8 of 17 and behind on 9 (largest drops: sqlalchemy 0.869 to 0.655 on n=7, scrapy 0.799 to 0.610 on n=9, celery 0.633 to 0.523 on n=22).
 3. **Embeddings alone lose to BM25** on both sources (significantly on self-harvested: -0.095, CI -0.136 to -0.058). BM25 is a strong baseline on code.
 4. **Fusing BM25 and embeddings helps modestly** (+0.062 on SWE-bench with CI +0.008 to +0.119; +0.015 on self-harvested with CI crossing zero).
-5. **The import graph is mixed.** On SWE-bench it adds +0.035 recall@10 over BM25 + embeddings (point estimate; no paired interval computed for that pair). On self-harvested it lowers recall@5 (0.606 to 0.551) and raises median tokens to reach all gold (63k to 80k), with recall@10 unchanged.
+5. **The import graph's own contribution is not established on either source.** The paired margin of the full pipeline over BM25 + embeddings (no graph) is +0.035 on SWE-bench (95% CI -0.022 to +0.092) and -0.012 on self-harvested (CI -0.034 to +0.009). Both intervals include zero. So the SWE-bench gain over BM25 comes mostly from fusing BM25 with embeddings (+0.062, CI +0.008 to +0.119); the graph's added +0.035 is a point estimate that may be noise. On self-harvested the graph also lowers recall@5 (0.606 to 0.551) and raises median tokens to reach all gold (63k to 80k).
 
 ## Not yet established (hypotheses, not findings)
 
 - SWE-bench repos are likely over-represented in model training data, and the 127 test instances are Django-heavy (49). The self-harvested result is what the PRD designates as the control for this. Why the two disagree is untested.
 - The graph step may hurt where fixes span few import-connected files, or where hub modules flood the neighbor list. Untested; the grid in `corpus/tuning_grid.parquet` is the starting point.
-- No paired confidence interval was computed for full vs BM25 + embeddings. That is the cleanest test of what the graph contributes and should be added to the report.
+- The paired interval for the graph is now in the report (finding 5). It is inconclusive on SWE-bench and slightly negative on self-harvested, so the graph step should not be presented as a demonstrated contributor.
