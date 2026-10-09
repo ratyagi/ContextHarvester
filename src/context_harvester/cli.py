@@ -145,7 +145,7 @@ def harvest(
     repos_csv: Path = typer.Option(CORPUS / "repos.csv", help="Clay-exported corpus"),
     repo: list[str] = typer.Option(None, "--repo", help="Harvest these repos instead of the CSV"),
     out: Path = typer.Option(CORPUS / "instances_harvested.parquet"),
-    max_per_repo: int = typer.Option(60),
+    max_per_repo: int = typer.Option(30),
 ):
     """Mine `Fixes #N` issue-to-PR links into an instance table."""
     from .harvest import GitHub, harvest_repo, to_frame

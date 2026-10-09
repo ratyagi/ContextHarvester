@@ -1,1 +1,21 @@
 repo,stars,open_issues,language,uses_actions,fixes_links,domain,held_out
+pallets/click,17787,84,Python,10,375,CLI/devtools,false
+encode/httpx,15541,140,Python,5,145,HTTP/networking,false
+psf/black,41885,264,Python,20,463,CLI/devtools,false
+pydantic/pydantic,28960,584,Python,16,755,data/scientific,false
+python-poetry/poetry,34305,589,Python,11,377,packaging,false
+pypa/pip,10293,960,Python,11,714,packaging,false
+networkx/networkx,17314,313,Python,17,559,data/scientific,true
+scrapy/scrapy,64678,272,Python,11,565,HTTP/networking,false
+celery/celery,28935,737,Python,18,943,async/distributed,false
+aio-libs/aiohttp,16567,221,Python,19,1778,HTTP/networking,false
+sqlalchemy/sqlalchemy,12207,212,Python,5,252,database/ORM,false
+ipython/ipython,16790,1318,Python,15,608,CLI/devtools,false
+urllib3/urllib3,4070,246,Python,11,255,HTTP/networking,true
+tornadoweb/tornado,22164,214,Python,6,167,web framework,true
+dask/dask,13932,1353,Python,17,975,async/distributed,false
+statsmodels/statsmodels,11678,2800,Python,14,259,data/scientific,false
+mkdocs/mkdocs,22494,192,Python,6,233,docs/imaging,false
+python-pillow/Pillow,13884,149,Python,23,666,docs/imaging,false
+Textualize/rich,57491,382,Python,11,304,CLI/devtools,false
+huggingface/datasets,22043,1457,Python,11,330,ML,false
