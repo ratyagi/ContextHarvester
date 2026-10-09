@@ -17,7 +17,7 @@ The session that built this has an egress policy that blocks `github.com` (other
 | Static results live on GitHub Pages | Page and `pages.yml` built. **Needs Pages enabled** (Settings > Pages > GitHub Actions) and real results. |
 | README states method, number, limitation in first three paragraphs | Method and limitation done. **Number pending**, and the README says so. |
 | One substantive issue or PR on `clay-run/agent-plugins` | **Not done.** Needs a person with a Clay account; this session has no access to that repo. |
-| Clay corpus build recorded, column config screenshotted, `corpus/repos.csv` committed | **Partly done.** Built in Clay on the Growth trial; `corpus/repos.csv` (20 repos, 3 held out) and the raw export are committed and covered by `tests/test_corpus.py`. **Still open:** the screen recording and column-config screenshot under `docs/evidence/`. |
+| Clay corpus build recorded, column config screenshotted, `corpus/repos.csv` committed | **Partly done.** Built in Clay on the Growth trial; `corpus/repos.csv` (20 repos, 3 held out) and the raw export are committed and covered by `tests/test_corpus.py`. Screen recording done and linked ([video](https://youtu.be/dfvmURSpRbc), `docs/evidence/README.md`). **Still open:** column-config screenshots and the plan-page screenshot under `docs/evidence/`. |
 
 ## Pipeline stages
 

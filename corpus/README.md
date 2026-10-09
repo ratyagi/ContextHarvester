@@ -2,7 +2,7 @@
 
 `repos.csv` is the evaluation corpus. Per the PRD it is built once in Clay on the 14-day Growth trial, exported, and committed. Nothing at runtime calls Clay.
 
-**Built in Clay on the Growth trial (Oct 9, 2026)** from `clay_seed.csv` (24 candidates). `clay_export_raw.csv` is the untouched Clay export. `repos.csv` is the selected corpus: 20 repos. Steps and column configuration: `docs/CLAY_RUNBOOK.md`.
+**Built in Clay on the Growth trial (Oct 9, 2026)** from `clay_seed.csv` (24 candidates). `clay_export_raw.csv` is the untouched Clay export. `repos.csv` is the selected corpus: 20 repos. Steps and column configuration: `docs/CLAY_RUNBOOK.md`. Recording of the build: https://youtu.be/dfvmURSpRbc.
 
 Excluded from the raw export: `bokeh/bokeh` (primary language TypeScript), `PyCQA/flake8` (6 `Fixes #N` links, below 30), `pyca/cryptography` (many fixes touch Rust, which is not indexed), `tiangolo/fastapi` (its `fixes_links` call errored in Clay and was not rerun, so it has no count or domain).
 

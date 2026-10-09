@@ -35,6 +35,10 @@ Configurations compared on identical indexes: random, BM25, embeddings only, BM2
 
 Infrastructure: none. GitHub Actions for compute, Parquet in the repo, a static page on GitHub Pages. See the PRD for what is deliberately not used.
 
+## Clay corpus
+
+The evaluation corpus (`corpus/repos.csv`, 20 Python repos, 3 held out) was built once in Clay on the Growth trial and committed. Nothing at runtime calls Clay. Walkthrough recording: [youtu.be/dfvmURSpRbc](https://youtu.be/dfvmURSpRbc). Details and exclusions: [`corpus/README.md`](corpus/README.md), [`docs/evidence/`](docs/evidence/README.md).
+
 ## Results
 
 <!-- RESULTS:START -->
