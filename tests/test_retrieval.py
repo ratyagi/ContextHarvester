@@ -68,3 +68,11 @@ def test_end_to_end_on_synthetic_repo(fixrepo, embedder):
     ranks = Retriever(files, embedder).rankings("parse_date does not validate the date string", Params(), "x")
     assert ranks["bm25"][0] == "pkg/parser.py" and ranks["full"][0] == "pkg/parser.py"
     assert "pkg/tokens.py" in ranks["full"]  # reached through the import graph
+
+
+def test_params_from_float_json_work_as_ints(embedder):
+    """Regression: tuned_params.json held 20.0/10.0, which crashed slicing inside expand()."""
+    files = [rf("m/a.py", "def widget_frobnicate(): pass\nfrom m.b import B\n"), rf("m/b.py", "class B: pass\n")]
+    p = Params(**{"rrf_k": 20.0, "graph_weight": 0.75, "n_seed": 10.0, "max_per_seed": 10.0, "reverse_weight": 0.5})
+    assert isinstance(p.n_seed, int) and isinstance(p.max_per_seed, int) and isinstance(p.rrf_k, int)
+    assert Retriever(files, embedder).rankings("widget frobnicate", p)["full"][0] == "m/a.py"

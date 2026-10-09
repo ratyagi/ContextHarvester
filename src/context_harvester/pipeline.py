@@ -23,6 +23,10 @@ class Params:
     max_per_seed: int = 6
     reverse_weight: float = 0.5
 
+    def __post_init__(self):
+        # pandas round-trips tuned ints as floats (20.0); these are used as k and slice bounds
+        self.rrf_k, self.n_seed, self.max_per_seed = int(self.rrf_k), int(self.n_seed), int(self.max_per_seed)
+
     def to_dict(self) -> dict:
         return asdict(self)
 
