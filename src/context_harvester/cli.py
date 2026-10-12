@@ -98,7 +98,7 @@ def _rank_text(repo, query, base_commit, budget, no_rerank, as_json, replay_gold
     t_search = time.time() - t2
     llm = None if no_rerank else FallbackLLM()
     ranked, mode = rerank(query, full, by_path, ranks, nbrs, budget, llm)
-    timings = {"clone_fetch": t_clone, "checkout_and_read": t_files, "files_indexed": len(files), "scope": scope, **r.timings, "search": t_search}
+    timings = {"clone_fetch": t_clone, "checkout_and_read": t_files, "files_indexed": len(files), "scope": scope, **({"candidate_k": candidate_k, "candidate_chunks": candidate_chunks} if scope == "candidates" else {}), **r.timings, "search": t_search}
     _print_ranked(ranked, mode, budget, as_json, time.time() - t0, timings)
     if replay_gold is not None:
         gold = set(replay_gold) & set(by_path)

@@ -69,3 +69,14 @@ What it does not establish: how much of the cold time a faster approach would sa
 - Embedding is still 76% of the remaining time (51.4s of 67.9s in-tool). At the rate this implies, roughly 23 chunks per second on this runner, K=150 or fewer chunks per file would bring the total under 60s. Which setting to adopt depends on what each costs in recall, which the dev experiments measure.
 - Clone plus checkout is about 11s and not reduced by anything here.
 - The replay took 53s wall, but it reuses embeddings cached by the rank step, so it is not a cold figure.
+
+#### Smaller candidate set, same repo (Oct 12, 2026)
+
+A second run on transformers with a smaller candidate set (the owner entered the settings suggested at the time, K=150 and 4 chunks per file; the output of that build did not print them, so this is recorded as reported, and the timing line now prints its own settings).
+
+| Run | Embedding | Cold rank, wall clock |
+|---|---|---|
+| K=300 candidates | 51.4s | 70s |
+| K=150 candidates (as reported) | 28.8s | **46s**, under the 60s goal |
+
+Embedding time did not halve exactly (28.8s vs 51.4s), which is consistent with many candidate files having fewer than 4 chunks. The replay of closed issue #49456 took 36s (not cold: it reuses cached embeddings). In that replay the fusion top-10 contained the one gold file, `configuration_utils.py`, whereas in the K=300 run and the all-files run it did not. That is one instance, so it says nothing about recall in general; the dev-only experiments measure that.
