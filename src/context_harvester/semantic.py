@@ -37,7 +37,7 @@ class MiniLMEmbedder:
         return np.asarray(v, dtype="float32")
 
 
-def chunk_text(path: str, text: str) -> list[str]:
+def chunk_text(path: str, text: str, max_chunks: int = MAX_CHUNKS) -> list[str]:
     """Split on line boundaries into ~CHUNK_CHARS pieces; sample evenly (keeping the first) if too many."""
     chunks, cur, size = [], [], 0
     for line in text.splitlines():
@@ -50,8 +50,8 @@ def chunk_text(path: str, text: str) -> list[str]:
         chunks.append("\n".join(cur))
     if not chunks:
         chunks = [""]
-    if len(chunks) > MAX_CHUNKS:
-        idx = np.linspace(0, len(chunks) - 1, MAX_CHUNKS).round().astype(int)
+    if len(chunks) > max_chunks:
+        idx = np.linspace(0, len(chunks) - 1, max_chunks).round().astype(int)
         chunks = [chunks[i] for i in sorted(set(idx.tolist()))]
     return [f"{path}\n{c}" for c in chunks]
 
@@ -85,7 +85,7 @@ class EmbedCache:
         self.file.parent.mkdir(parents=True, exist_ok=True)
         keys = list(self.mats)
         offs = np.cumsum([0] + [len(self.mats[k]) for k in keys])
-        np.savez(self.file, keys=np.array(keys, dtype="U40"), offsets=offs, mat=np.concatenate([self.mats[k] for k in keys]))
+        np.savez(self.file, keys=np.array(keys, dtype="U64"), offsets=offs, mat=np.concatenate([self.mats[k] for k in keys]))
         self._dirty = False
 
 
@@ -149,3 +149,62 @@ class SemanticIndex:
             return [(self.paths[f], s) for f, s in ranked[:k]]
         scores, ids = self._index.search(q, min(k, len(self.paths)))
         return [(self.paths[i], float(s)) for s, i in zip(scores[0], ids[0]) if i >= 0]
+
+
+def chunk_key(f: RepoFile, max_chunks: int) -> str:
+    """Cache key. The default cap keeps the plain file key so existing caches stay valid."""
+    return f.key if max_chunks == MAX_CHUNKS else f"{f.key}:c{max_chunks}"
+
+
+class CandidateSemantic:
+    """Semantic search over a candidate subset only, so embedding cost is O(candidates), not O(repo size).
+
+    Used on a cold run of a large repo: embed only the files lexical retrieval already considers plausible
+    (plus anything cached), with a lower chunk cap, then search them with FAISS. Whether this costs recall is
+    measured on dev instances before it is adopted.
+    """
+
+    def __init__(self, files: list[RepoFile], embedder: Embedder, cache: EmbedCache | None = None, max_chunks: int = 4):
+        import faiss
+
+        self._faiss = faiss
+        self.by_path = {f.path: f for f in files}
+        self.embedder = embedder
+        self.cache = cache or EmbedCache(None, embedder.name)
+        self.max_chunks = max_chunks
+        self.last_new_chunks = 0  # chunks actually embedded by the last search (0 when fully cached)
+        self.last_total_chunks = 0  # chunks the last search needed, cached or not (cold cost)
+
+    def _mats(self, paths: list[str]) -> list[np.ndarray]:
+        files = [self.by_path[p] for p in paths]
+        todo = [f for f in files if self.cache.get(chunk_key(f, self.max_chunks)) is None]
+        texts, owner = [], []
+        for i, f in enumerate(todo):
+            cs = chunk_text(f.path, f.text, self.max_chunks)
+            texts.extend(cs)
+            owner.extend([i] * len(cs))
+        if texts:
+            emb = self.embedder.encode(texts).astype("float32")
+            owner_arr = np.array(owner)
+            for i, f in enumerate(todo):
+                self.cache.put(chunk_key(f, self.max_chunks), emb[owner_arr == i])
+            self.cache.flush()
+        self.last_new_chunks = len(texts)
+        mats = [self.cache.get(chunk_key(f, self.max_chunks)) for f in files]
+        self.last_total_chunks = int(sum(len(m) for m in mats))
+        return mats
+
+    def search(self, query: str, candidates: list[str], k: int = 100, mode: str = "pooled") -> list[tuple[str, float]]:
+        if not candidates:
+            return []
+        mats = self._mats(candidates)
+        q = self.embedder.encode([query]).astype("float32")
+        if mode == "maxchunk":
+            scores = [float((m @ q[0]).max()) for m in mats]
+            order = sorted(range(len(candidates)), key=lambda i: (-scores[i], candidates[i]))
+            return [(candidates[i], scores[i]) for i in order[:k]]
+        pooled = np.stack([(lambda v: (v / (np.linalg.norm(v) or 1.0)))(m.mean(axis=0)) for m in mats]).astype("float32")
+        index = self._faiss.IndexFlatIP(pooled.shape[1])
+        index.add(pooled)
+        sc, ids = index.search(q, min(k, len(candidates)))
+        return [(candidates[i], float(x)) for x, i in zip(sc[0], ids[0]) if i >= 0]

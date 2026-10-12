@@ -18,6 +18,10 @@ The session that built this has an egress policy that blocks `github.com` (other
 | README states method, number, limitation in first three paragraphs | **Done.** Method, the number (with the control that disagrees), and the lower-bound limitation. |
 | Clay corpus build recorded, column config screenshotted, `corpus/repos.csv` committed | **Partly done.** Built in Clay on the Growth trial; `corpus/repos.csv` (20 repos, 3 held out) and the raw export are committed and covered by `tests/test_corpus.py`. Screen recording done and linked ([video](https://youtu.be/dfvmURSpRbc), `docs/evidence/README.md`). Screenshots are in `docs/evidence/`: plan allowance, workbook, HTTP API accounts, finished table, and the Use AI column config. **Not captured:** settings screenshots of the `gh`, `fixes_raw` and `actions` HTTP API columns (the recording shows them). |
 
+## In progress: scalable cold path (owner chose the option that scales, Oct 12, 2026)
+
+Built behind options, defaults unchanged so the committed results stay reproducible: candidate-scoped semantic search (embeds only the top lexical hits, cost bounded by K, not repo size), a regex import extractor, and memoized tokenization. Tested for equivalence and bounds. **Not yet measured:** the recall cost (run the `experiments` workflow, dev instances only) and the cold time on a large repo (run the `demo` workflow with `scope=candidates`). The PRD's semantic stage says one embedding per file for every file, so adopting this as the default needs a PRD amendment, which waits for those numbers and the owner's approval.
+
 ## Pipeline stages
 
 Snapshot, lexical, semantic, structural, fusion, rerank, score: all built and tested. Rerank, the provider-fallback layer, the GitHub harvester, and the `rank` and `replay` commands are tested with mocks and a local repo only (no live API calls or real clones were possible). The tune and eval workflows have exercised MiniLM, real clones and the harvester on real repos. The LLM rerank has still not run against a live provider and is not in the evaluation.

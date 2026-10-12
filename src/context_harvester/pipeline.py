@@ -10,7 +10,7 @@ from .files import RepoFile
 from .fusion import rrf
 from .lexical import LexicalIndex
 from .query import focus_query
-from .semantic import EmbedCache, Embedder, SemanticIndex
+from .semantic import CandidateSemantic, EmbedCache, Embedder, SemanticIndex
 from .structural import ImportGraph, build_graph, expand
 
 METHODS = ["random", "bm25", "embed", "bm25+embed", "full"]
@@ -60,20 +60,50 @@ def random_ranking(paths: list[str], seed: str) -> list[str]:
 
 
 class Retriever:
-    def __init__(self, files: list[RepoFile], embedder: Embedder, cache: EmbedCache | None = None):
+    """scope 'all' (default, reproduces the committed results) embeds every file.
+
+    scope 'candidates' embeds only the top `candidate_k` lexical hits per query, at `candidate_chunks` chunks
+    per file, so the semantic stage costs the same on a 100-file repo and a 5,000-file repo.
+    Pass prebuilt `lex` / `graph` to share them across variants in experiments.
+    """
+
+    def __init__(
+        self,
+        files: list[RepoFile],
+        embedder: Embedder,
+        cache: EmbedCache | None = None,
+        scope: str = "all",
+        candidate_k: int = 300,
+        candidate_chunks: int = 4,
+        graph_mode: str = "ast",
+        lex: LexicalIndex | None = None,
+        graph: ImportGraph | None = None,
+    ):
         self.files = files
+        self.scope, self.candidate_k = scope, candidate_k
         t0 = time.perf_counter()
-        self.lex = LexicalIndex(files)
+        self.lex = lex or LexicalIndex(files)
         t1 = time.perf_counter()
-        self.sem = SemanticIndex(files, embedder, cache)  # embeds every file not already cached: the dominant cold cost
+        if scope == "candidates":
+            self.sem = None
+            self.cand_sem = CandidateSemantic(files, embedder, cache, candidate_chunks)
+        else:
+            self.sem = SemanticIndex(files, embedder, cache)  # embeds every file not already cached
+            self.cand_sem = None
         t2 = time.perf_counter()
-        self.graph = build_graph(files)
+        self.graph = graph or build_graph(files, graph_mode)
         t3 = time.perf_counter()
         self.timings = {"bm25_index": t1 - t0, "embed_index": t2 - t1, "import_graph": t3 - t2}
 
     def retrieve(self, query: str, query_mode: str = "full", sem_mode: str = "pooled") -> Retrieved:
         q_lex, q_emb = focus_query(query) if query_mode == "focused" else (query, query)
-        return Retrieved(self.lex.search(q_lex, POOL), self.sem.search(q_emb, POOL, sem_mode))
+        if self.cand_sem is None:
+            return Retrieved(self.lex.search(q_lex, POOL), self.sem.search(q_emb, POOL, sem_mode))
+        t0 = time.perf_counter()
+        lex_big = self.lex.search(q_lex, max(POOL, self.candidate_k))
+        sem = self.cand_sem.search(q_emb, [p for p, _ in lex_big[: self.candidate_k]], POOL, sem_mode)
+        self.timings["embed_candidates"] = time.perf_counter() - t0
+        return Retrieved(lex_big[:POOL], sem)
 
     def rankings(self, query: str, params: Params, seed: str = "") -> dict[str, list[str]]:
         r = self.retrieve(query, params.query_mode, params.sem_mode)

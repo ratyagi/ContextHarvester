@@ -70,7 +70,7 @@ def _load_params(path: Path | None):
     return Params(**json.loads(Path(p).read_text())) if Path(p).exists() else Params()
 
 
-def _rank_text(repo, query, base_commit, budget, no_rerank, as_json, replay_gold=None, label=""):
+def _rank_text(repo, query, base_commit, budget, no_rerank, as_json, replay_gold=None, label="", scope="all", candidate_k=300, candidate_chunks=4, graph_mode="ast"):
     from .evaluate import repo_dir
     from .files import list_files
     from .gold import strip_fix_text
@@ -92,13 +92,13 @@ def _rank_text(repo, query, base_commit, budget, no_rerank, as_json, replay_gold
     t_files = time.time() - t1
     by_path = {f.path: f for f in files}
     q = strip_fix_text(query)
-    r = Retriever(files, emb, EmbedCache(CACHE / "emb" / _tag(repo), emb.name))
+    r = Retriever(files, emb, EmbedCache(CACHE / "emb" / _tag(repo), emb.name), scope=scope, candidate_k=candidate_k, candidate_chunks=candidate_chunks, graph_mode=graph_mode)
     t2 = time.time()
     ranks, nbrs, full = _signals(r, q, params, list(by_path))
     t_search = time.time() - t2
     llm = None if no_rerank else FallbackLLM()
     ranked, mode = rerank(query, full, by_path, ranks, nbrs, budget, llm)
-    timings = {"clone_fetch": t_clone, "checkout_and_read": t_files, "files_indexed": len(files), **r.timings, "search": t_search}
+    timings = {"clone_fetch": t_clone, "checkout_and_read": t_files, "files_indexed": len(files), "scope": scope, **r.timings, "search": t_search}
     _print_ranked(ranked, mode, budget, as_json, time.time() - t0, timings)
     if replay_gold is not None:
         gold = set(replay_gold) & set(by_path)
@@ -118,6 +118,10 @@ def rank(
     issue: int = typer.Argument(..., help="Issue number"),
     budget: int = typer.Option(20000, help="Token budget for files to read"),
     no_rerank: bool = typer.Option(False, help="Skip the LLM rerank; use fusion output"),
+    scope: str = typer.Option("all", help="'all' embeds every file (default); 'candidates' embeds only the top lexical hits, so cost does not grow with repo size"),
+    candidate_k: int = typer.Option(300, help="Candidates embedded when --scope candidates"),
+    candidate_chunks: int = typer.Option(4, help="Chunks per candidate file when --scope candidates"),
+    graph_mode: str = typer.Option("ast", help="'ast' (default) or 'regex' (faster import extraction)"),
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output (for agents calling this as a tool)"),
 ):
     """Rank the files to read for an issue, at the repo's current default-branch head."""
@@ -125,7 +129,7 @@ def rank(
 
     repo = parse_repo(repo)
     iss = GitHub().get(f"/repos/{repo}/issues/{issue}")
-    _rank_text(repo, f"{iss['title']}\n\n{iss.get('body') or ''}", None, budget, no_rerank, json_out)
+    _rank_text(repo, f"{iss['title']}\n\n{iss.get('body') or ''}", None, budget, no_rerank, json_out, scope=scope, candidate_k=candidate_k, candidate_chunks=candidate_chunks, graph_mode=graph_mode)
 
 
 @app.command()
@@ -134,6 +138,10 @@ def replay(
     issue: int = typer.Argument(..., help="A CLOSED issue whose merged fix is known"),
     budget: int = typer.Option(20000),
     no_rerank: bool = typer.Option(False),
+    scope: str = typer.Option("all"),
+    candidate_k: int = typer.Option(300),
+    candidate_chunks: int = typer.Option(4),
+    graph_mode: str = typer.Option("ast"),
 ):
     """Run on a closed issue at the commit before its fix, then grade against the files the merged PR touched."""
     from .gold import filter_gold, is_test_file
@@ -148,7 +156,7 @@ def replay(
         if inst:
             gold = [f for f in filter_gold(inst["gold_files"]) if not is_test_file(f)]
             typer.echo(f"issue #{issue} fixed by PR #{pr['number']}; snapshot {inst['base_commit'][:10]} (the fix is NOT in the index)\n")
-            _rank_text(repo, inst["issue_text"], inst["base_commit"], budget, no_rerank, False, replay_gold=gold)
+            _rank_text(repo, inst["issue_text"], inst["base_commit"], budget, no_rerank, False, replay_gold=gold, scope=scope, candidate_k=candidate_k, candidate_chunks=candidate_chunks, graph_mode=graph_mode)
             return
     typer.echo("no merged PR with a `Fixes #N` link found for that issue", err=True)
     raise typer.Exit(1)
@@ -263,6 +271,31 @@ def eval_cmd(
     typer.echo(report.build_readme_block(summary))
     if len(excluded):
         typer.echo(f"\n{len(excluded)} instances excluded (see {out}/excluded.parquet); leakage failures are listed with reason LEAKAGE", err=True)
+
+
+@app.command()
+def experiment(
+    instances: list[Path] = typer.Argument(...),
+    split_file: Path = typer.Option(CORPUS / "split.json"),
+    out: Path = typer.Option(Path("results/dev_experiments")),
+    limit: int = typer.Option(15, help="Max dev instances per repo (0 = all)"),
+):
+    """Dev-only comparison of cheaper cold paths against the committed pipeline (never touches test or held-out)."""
+    from . import experiments as ex
+    from . import split as sp
+    from .semantic import MiniLMEmbedder
+
+    rows, graph_rows, cps = ex.run_experiments(_read(instances), sp.load(split_file), MiniLMEmbedder(), CACHE / "repos", CACHE / "emb", _load_params(None), limit or None)
+    if rows.empty:
+        typer.echo("no dev instances evaluated", err=True)
+        raise typer.Exit(1)
+    summary = ex.summarize(rows, graph_rows, cps)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    rows.to_parquet(f"{out}.parquet", index=False)
+    summary.to_parquet(f"{out}_summary.parquet", index=False)
+    md = ex.markdown(summary, graph_rows, cps)
+    Path(f"{out}.md").write_text(md + "\n")
+    typer.echo(md)
 
 
 @app.command()

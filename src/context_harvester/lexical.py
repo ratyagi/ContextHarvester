@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 
 from rank_bm25 import BM25Okapi
 
@@ -16,13 +17,17 @@ STOP = {
 }
 
 
+@lru_cache(maxsize=500_000)
+def _split_word(word: str) -> tuple[str, ...]:
+    """Pieces of one identifier plus the compound. Identifiers repeat heavily across a repo, so memoize."""
+    pieces = tuple(p.lower() for p in _PARTS.findall(word) if len(p) > 1)
+    return pieces + ((word.lower(),) if len(pieces) > 1 else ())  # keep the compound so exact identifiers match strongly
+
+
 def tokenize(text: str) -> list[str]:
     out: list[str] = []
     for word in _IDENT.findall(text):
-        pieces = [p.lower() for p in _PARTS.findall(word) if len(p) > 1]
-        out.extend(pieces)
-        if len(pieces) > 1:  # keep the compound so exact identifiers match strongly
-            out.append(word.lower())
+        out.extend(_split_word(word))
     return [t for t in out if t not in STOP]
 
 
