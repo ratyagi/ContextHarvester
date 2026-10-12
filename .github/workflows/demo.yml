@@ -11,6 +11,9 @@ jobs:
   demo:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash   # bash -eo pipefail: a failing `ch` must not be hidden by `| tee`
     env:
       GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
