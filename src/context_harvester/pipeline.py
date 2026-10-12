@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass
 from .files import RepoFile
 from .fusion import rrf
 from .lexical import LexicalIndex
+from .query import focus_query
 from .semantic import EmbedCache, Embedder, SemanticIndex
 from .structural import ImportGraph, build_graph, expand
 
@@ -22,6 +23,10 @@ class Params:
     n_seed: int = 10
     max_per_seed: int = 6
     reverse_weight: float = 0.5
+    # experimental variants; defaults reproduce the committed results
+    query_mode: str = "full"      # 'full' | 'focused'
+    sem_mode: str = "pooled"      # 'pooled' | 'maxchunk'
+    hub_damping: bool = False
 
     def __post_init__(self):
         # pandas round-trips tuned ints as floats (20.0); these are used as k and slice bounds
@@ -42,7 +47,7 @@ def fuse(r: Retrieved, graph: ImportGraph, params: Params):
     """Returns (signals, full) where signals has bm25/embed/bm25+embed/graph lists and full is the fused list."""
     lex, sem = [p for p, _ in r.lex], [p for p, _ in r.sem]
     two = rrf([(lex, 1.0), (sem, 1.0)], params.rrf_k)
-    gr = expand(two, graph, params.n_seed, params.max_per_seed, params.reverse_weight)
+    gr = expand(two, graph, params.n_seed, params.max_per_seed, params.reverse_weight, params.hub_damping)
     full = rrf([(lex, 1.0), (sem, 1.0), ([p for p, _ in gr], params.graph_weight)], params.rrf_k)
     return {"bm25": r.lex, "embed": r.sem, "bm25+embed": two, "graph": gr}, full
 
@@ -60,11 +65,12 @@ class Retriever:
         self.sem = SemanticIndex(files, embedder, cache)
         self.graph = build_graph(files)
 
-    def retrieve(self, query: str) -> Retrieved:
-        return Retrieved(self.lex.search(query, POOL), self.sem.search(query, POOL))
+    def retrieve(self, query: str, query_mode: str = "full", sem_mode: str = "pooled") -> Retrieved:
+        q_lex, q_emb = focus_query(query) if query_mode == "focused" else (query, query)
+        return Retrieved(self.lex.search(q_lex, POOL), self.sem.search(q_emb, POOL, sem_mode))
 
     def rankings(self, query: str, params: Params, seed: str = "") -> dict[str, list[str]]:
-        r = self.retrieve(query)
+        r = self.retrieve(query, params.query_mode, params.sem_mode)
         return rankings_from(r, self.graph, params, [f.path for f in self.files], seed)
 
 

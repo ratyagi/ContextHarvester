@@ -57,60 +57,95 @@ def chunk_text(path: str, text: str) -> list[str]:
 
 
 class EmbedCache:
-    """File-vector cache keyed by sha1(path+content), shared across snapshots of one repo."""
+    """Chunk-embedding cache keyed by sha1(path+content), shared across snapshots of one repo.
+
+    Stores every chunk vector of a file, so both the pooled file vector and per-chunk search derive from it.
+    """
 
     def __init__(self, directory: Path | None, model: str):
-        self.file = None if directory is None else Path(directory) / f"emb_{model}.npz"
-        self.vecs: dict[str, np.ndarray] = {}
+        self.file = None if directory is None else Path(directory) / f"embc_{model}.npz"
+        self.mats: dict[str, np.ndarray] = {}
         self._dirty = False
         if self.file is not None and self.file.exists():
             z = np.load(self.file, allow_pickle=False)
-            self.vecs = dict(zip(z["keys"].tolist(), z["vecs"]))
+            keys, offs, mat = z["keys"].tolist(), z["offsets"], z["mat"]
+            for i, k in enumerate(keys):
+                self.mats[k] = mat[offs[i] : offs[i + 1]]
 
-    def put(self, key: str, vec: np.ndarray) -> None:
-        self.vecs[key] = vec
+    def get(self, key: str) -> np.ndarray | None:
+        return self.mats.get(key)
+
+    def put(self, key: str, mat: np.ndarray) -> None:
+        self.mats[key] = mat
         self._dirty = True
 
     def flush(self) -> None:
-        if self.file is None or not self._dirty:
+        if self.file is None or not self._dirty or not self.mats:
             return
         self.file.parent.mkdir(parents=True, exist_ok=True)
-        keys = np.array(list(self.vecs), dtype="U40")
-        np.savez(self.file, keys=keys, vecs=np.stack(list(self.vecs.values())))
+        keys = list(self.mats)
+        offs = np.cumsum([0] + [len(self.mats[k]) for k in keys])
+        np.savez(self.file, keys=np.array(keys, dtype="U40"), offsets=offs, mat=np.concatenate([self.mats[k] for k in keys]))
         self._dirty = False
+
+
+CHUNK_POOL = 400  # chunk hits examined by max-chunk search before aggregating per file
 
 
 class SemanticIndex:
     def __init__(self, files: list[RepoFile], embedder: Embedder, cache: EmbedCache | None = None):
         import faiss
 
+        self._faiss = faiss
         self.embedder = embedder
         self.paths = [f.path for f in files]
         cache = cache or EmbedCache(None, embedder.name)
-        vecs: list[np.ndarray | None] = [cache.vecs.get(f.key) for f in files]
-        todo = [i for i, v in enumerate(vecs) if v is None]
+        mats: list[np.ndarray | None] = [cache.get(f.key) for f in files]
+        todo = [i for i, m in enumerate(mats) if m is None]
         if todo:
             texts, owner = [], []
             for i in todo:
                 cs = chunk_text(files[i].path, files[i].text)
                 texts.extend(cs)
                 owner.extend([i] * len(cs))
-            emb = embedder.encode(texts)
+            emb = embedder.encode(texts).astype("float32")
             owner_arr = np.array(owner)
             for i in todo:
-                pooled = emb[owner_arr == i].mean(axis=0)
-                pooled = pooled / (np.linalg.norm(pooled) or 1.0)
-                vecs[i] = pooled.astype("float32")
-                cache.put(files[i].key, vecs[i])
+                mats[i] = emb[owner_arr == i]
+                cache.put(files[i].key, mats[i])
             cache.flush()
-        self.dim = len(vecs[0]) if vecs else 0
-        self._index = faiss.IndexFlatIP(self.dim) if vecs else None
-        if vecs:
-            self._index.add(np.stack(vecs).astype("float32"))
+        self.dim = mats[0].shape[1] if mats else 0
+        pooled = []
+        for m in mats:
+            v = m.mean(axis=0)
+            pooled.append((v / (np.linalg.norm(v) or 1.0)).astype("float32"))
+        self._index = faiss.IndexFlatIP(self.dim) if mats else None
+        if mats:
+            self._index.add(np.stack(pooled))
+        self._chunk_mats = mats
+        self._chunk_index = None
+        self._chunk_owner = None
 
-    def search(self, query: str, k: int = 100) -> list[tuple[str, float]]:
+    def _build_chunk_index(self) -> None:
+        self._chunk_owner = np.concatenate([np.full(len(m), i) for i, m in enumerate(self._chunk_mats)])
+        self._chunk_index = self._faiss.IndexFlatIP(self.dim)
+        self._chunk_index.add(np.concatenate(self._chunk_mats).astype("float32"))
+
+    def search(self, query: str, k: int = 100, mode: str = "pooled") -> list[tuple[str, float]]:
+        """mode 'pooled': one mean vector per file. 'maxchunk': a file scores as its best-matching chunk."""
         if self._index is None:
             return []
-        q = self.embedder.encode([query])
-        scores, ids = self._index.search(q.astype("float32"), min(k, len(self.paths)))
+        q = self.embedder.encode([query]).astype("float32")
+        if mode == "maxchunk":
+            if self._chunk_index is None:
+                self._build_chunk_index()
+            scores, ids = self._chunk_index.search(q, min(CHUNK_POOL, self._chunk_index.ntotal))
+            best: dict[int, float] = {}
+            for s, i in zip(scores[0], ids[0]):
+                if i >= 0:
+                    f = int(self._chunk_owner[i])
+                    best[f] = max(best.get(f, -1e9), float(s))
+            ranked = sorted(best.items(), key=lambda kv: (-kv[1], self.paths[kv[0]]))
+            return [(self.paths[f], s) for f, s in ranked[:k]]
+        scores, ids = self._index.search(q, min(k, len(self.paths)))
         return [(self.paths[i], float(s)) for s, i in zip(scores[0], ids[0]) if i >= 0]

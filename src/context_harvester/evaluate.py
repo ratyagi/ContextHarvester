@@ -34,7 +34,7 @@ def gold_sets(gold_files: list[str], indexed: set[str]) -> dict[str, set[str]]:
 
 def eval_instance(inst, files, retriever: Retriever, params: Params, methods=METHODS) -> list[dict]:
     query = strip_fix_text(inst.issue_text)
-    ranks = rankings_from(retriever.retrieve(query), retriever.graph, params, [f.path for f in files], inst.instance_id)
+    ranks = rankings_from(retriever.retrieve(query, params.query_mode, params.sem_mode), retriever.graph, params, [f.path for f in files], inst.instance_id)
     tokens = {f.path: f.tokens for f in files}
     golds = gold_sets(list(inst.gold_files), set(tokens))
     raw = {"unfiltered": len(set(inst.gold_files)), "filtered": len(set(filter_gold(list(inst.gold_files))))}

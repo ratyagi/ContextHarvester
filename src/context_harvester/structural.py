@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -94,6 +95,7 @@ def expand(
     n_seed: int = 10,
     max_per_seed: int = 6,
     reverse_weight: float = 0.5,
+    hub_damping: bool = False,
 ) -> list[tuple[str, float]]:
     """One hop from the top seeds. A neighbor scores the sum of its parents' seed scores times edge weight.
 
@@ -108,5 +110,7 @@ def expand(
         # prefer low-degree neighbors: a file that imports everything says little
         nbrs.sort(key=lambda nw: (-nw[1], len(graph.reverse.get(nw[0], ())) + len(graph.forward.get(nw[0], ()))))
         for n, w in nbrs[:max_per_seed]:
+            if hub_damping:  # a module that imports or is imported by everything says little about this issue
+                w = w / math.log2(2 + len(graph.forward.get(n, ())) + len(graph.reverse.get(n, ())))
             scores[n] += s * w
     return sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
