@@ -2,7 +2,7 @@
 
 Oct 8, 2026 · @roo
 
-> Faithful transcription of `Context_Harvester___PRD.pdf` (14 pages). This file is the source of truth for the project. See `CLAUDE.md`.
+> Transcription of `Context_Harvester___PRD.pdf` (14 pages). This file is the source of truth for the project. See `CLAUDE.md`. Amended after transcription with the owner's approval; see **Amendments** at the end.
 
 ## Summary
 
@@ -173,7 +173,6 @@ The design rule: **Clay produces an artifact, it is not a runtime dependency.** 
 ### What is used
 
 - **Growth trial (14 days).** HTTP API enrichment columns, Use AI columns, waterfalls, conditional run logic. This is the part that demonstrates product fluency.
-- **clay-run/agent-plugins.** Their public repo (130 stars, 22 forks, a CONTRIBUTING.md), holding Clay's agent skills and the `clay` CLI for Claude Code, Codex, and Cursor. A permanent demo target and a place to contribute.
 - **developers.clay.com.** Searches, routines, audiences, signals. Tables are marked Enterprise-only.
 
 ### Building the corpus in Clay
@@ -213,7 +212,6 @@ Three weeks part-time, October 2026. The first number lands in week one, before 
 | Import-graph hop | Oct 20 to Oct 24 |
 | LLM rerank + CLI | Oct 24 to Oct 27 |
 | Results page + README | Oct 27 to Oct 29 |
-| Clay plugin + PR | Oct 29 to Oct 30 |
 | **Interview-ready** | **Oct 31** |
 
 The ordering is deliberate on two counts. The Clay corpus build comes first, because the Growth trial runs 14 days from activation and nothing later needs it. The BM25 baseline comes before any embedding work, so there is a measured number by day 7. If BM25 cannot be beaten, that is known with two weeks left to reframe the project around the finding.
@@ -224,7 +222,7 @@ The ordering is deliberate on two counts. The Clay corpus build comes first, bec
 |---|---|---|
 | 1 | Clay corpus build on the Growth trial, issue-to-PR harvester, repo snapshotting, BM25 baseline, eval harness | `corpus/repos.csv` is committed with the Clay recording captured, a recall@10 number exists for BM25 on at least 2 repos, and the leakage test passes |
 | 2 | Embeddings, FAISS index, import-graph expansion, rank fusion | The ablation table has 4 rows and the margin over BM25 is known |
-| 3 | LLM rerank, CLI polish, results page, README, Clay plugin and PR | The demo runs on a repo picked by someone else |
+| 3 | LLM rerank, CLI polish, results page, README | The demo runs on a repo picked by someone else |
 
 ### Cut list, in order
 
@@ -234,8 +232,7 @@ If time runs short, these go first. The project stays defensible after every cut
 2. The LLM rerank stage. Fusion output is already a ranked list.
 3. The results page. A markdown table in the README works.
 4. The held-out repos. Report on fewer repos and say so.
-5. The Clay plugin and PR in week 3. The corpus build in week 1 already carries the product-fluency signal.
-6. **Never cut:** the BM25 baseline, the snapshot-leakage test, or the ablation. Those three are what make the number mean anything.
+5. **Never cut:** the BM25 baseline, the snapshot-leakage test, or the ablation. Those three are what make the number mean anything.
 
 ## Risks and open questions
 
@@ -266,7 +263,6 @@ If time runs short, these go first. The project stays defensible after every cut
 - [ ] Snapshot-leakage test passing
 - [ ] Static results live on GitHub Pages
 - [ ] README states the method, the number, and the metric's limitation in the first three paragraphs
-- [ ] One substantive issue or PR opened on `clay-run/agent-plugins`
 - [ ] Clay corpus build recorded, column config screenshotted, `corpus/repos.csv` committed
 
 ### Interview-ready
@@ -280,3 +276,7 @@ The project clears the bar when all three of these are true.
 ### What this does not need to be
 
 It does not need to beat the state of the art. It does not need to be novel research. It needs to be a correctly measured system with a defensible number, built by one person in three weeks, that runs live. That is rarer in a new-grad portfolio than novelty is.
+
+## Amendments
+
+- **2026-10-12, approved by the owner:** removed the `clay-run/agent-plugins` issue/PR deliverable everywhere it appeared (the "What is used" bullet, the "Clay plugin + PR" milestone, the week 3 focus, cut list item 5, and the success-criteria checkbox). The owner's aim is a good, workable project built with Clay's product; the corpus build in Clay is the Clay deliverable. That repo's `CONTRIBUTING.md` also states pull requests are not accepted. The original PDF in the repo root is unchanged.

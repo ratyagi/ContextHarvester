@@ -11,7 +11,7 @@
 5. **Never cut:** the BM25 baseline, the snapshot-leakage test, or the ablation.
 6. **If the PRD and a request conflict, or the PRD is silent or ambiguous, stop and ask the user.** Do not decide alone. If the PRD itself must change, edit `docs/PRD.md` only after the user approves, and say so in the commit message.
 7. **Tie work to the PRD.** Commit messages and PR descriptions name the PRD section or success-criteria item they serve.
-8. **Report honestly.** Never fake or estimate a result. Every number in the README or results page comes from a real run. Report configurations that lost. State the lower-bound caveat on recall unprompted. If something in the PRD cannot be done from this environment (for example the Clay trial, screen recording, or opening a PR on `clay-run/agent-plugins`), say so plainly and leave it listed as open in `docs/STATUS.md`. Do not simulate it.
+8. **Report honestly.** Never fake or estimate a result. Every number in the README or results page comes from a real run. Report configurations that lost. State the lower-bound caveat on recall unprompted. If something in the PRD cannot be done from this environment (for example the Clay trial or a screen recording), say so plainly and leave it listed as open in `docs/STATUS.md`. Do not simulate it.
 
 ## Evaluation integrity (from the PRD protocol)
 
