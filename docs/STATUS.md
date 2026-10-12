@@ -10,7 +10,7 @@ The session that built this has an egress policy that blocks `github.com` (other
 
 | Item | State |
 |---|---|
-| CLI runs end to end on an arbitrary public Python repo in under 60 seconds | Built (`ch rank`, `ch replay`, `--json`). **Not verified** on a real repo; timing is printed on every run. Blobless clone, a content-hash embedding cache and chunk caps are in for speed. |
+| CLI runs end to end on an arbitrary public Python repo in under 60 seconds | **Verified on one repo.** `pallets/jinja` on a GitHub-hosted runner via the `demo` workflow (Oct 12, 2026): cold rank 21s wall (19.5s in-tool, including clone, indexing and model load; weights were pre-downloaded), replay of closed issue #1701 (fixed by PR #1702) 21s. One data point on a mid-sized repo; a very large repo has not been timed. |
 | Evaluated on SWE-bench Verified and at least 4 self-harvested repos, 2 held out | **Done.** Real run committed in `results/`: 127 SWE-bench Verified test instances, 350 self-harvested test instances (17 repos), 90 on 3 held-out repos. 0 instances excluded, 0 leakage failures. |
 | Recall@10 against all four baselines, ablation table published | **Done.** All baselines and the full pipeline reported on identical indexes with bootstrap CIs and paired margin vs BM25; see `README.md` and `docs/FINDINGS.md`. The full pipeline beats BM25 on SWE-bench (+0.096, CI +0.034 to +0.162) but not on the self-harvested control (+0.003, CI -0.028 to +0.032). |
 | Snapshot-leakage test passing | **Done.** `tests/test_snapshot_leakage.py`. The same guard runs on every evaluated instance and failures are listed. |

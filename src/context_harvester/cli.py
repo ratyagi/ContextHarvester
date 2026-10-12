@@ -90,11 +90,13 @@ def _rank_text(repo, query, base_commit, budget, no_rerank, as_json, replay_gold
     _print_ranked(ranked, mode, budget, as_json, time.time() - t0)
     if replay_gold is not None:
         gold = set(replay_gold) & set(by_path)
+        fused10 = full[:10]  # graded before the token budget, like the evaluation's top-10, so it is comparable to BM25
         bm = [p for p, _ in r.lex.search(q, 10)]
-        top = [x.path for x in ranked[:10]]
+        shown = [x.path for x in ranked]
         typer.echo(f"\nREPLAY vs merged fix ({len(gold)} source files in snapshot): {', '.join(sorted(gold)) or '-'}")
-        typer.echo(f"  ranker top-10 surfaced : {sorted(gold & set(top))}  ({len(gold & set(top))}/{len(gold)})")
+        typer.echo(f"  fusion top-10 surfaced : {sorted(gold & set(fused10))}  ({len(gold & set(fused10))}/{len(gold)})")
         typer.echo(f"  BM25 alone top-10      : {sorted(gold & set(bm))}  ({len(gold & set(bm))}/{len(gold)})")
+        typer.echo(f"  shown within {budget}-token budget ({len(shown)} files): {sorted(gold & set(shown))}  ({len(gold & set(shown))}/{len(gold)})")
         typer.echo("  note: recall against changed files is a lower bound; a highly ranked file outside the gold set is not necessarily a false positive.")
 
 
