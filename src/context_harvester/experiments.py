@@ -61,7 +61,11 @@ def run_experiments(
     limit: int | None = None,
     url_for=lambda repo: f"https://github.com/{repo}.git",
     log=lambda s: print(s, file=sys.stderr),
+    on_progress=None,
+    progress_every: int = 20,
 ):
+    """on_progress(rows_df, graph_rows_df, throughput) is called every `progress_every` instances, so a job that
+    is cancelled or times out still leaves partial results instead of nothing."""
     df = instances.copy()
     df["group"] = assign(df, split)
     df = df[df["group"] == "dev"].sort_values(["repo", "created_at"])  # dev only, by construction
@@ -101,6 +105,8 @@ def run_experiments(
                                      "recall@5": recall_at_k(ranks[m], gold, 5), "recall@10": recall_at_k(ranks[m], gold, 10),
                                      "chunks": chunks, "files": len(files)})
                 log(f"ok {inst.instance_id} ({len(files)} files)")
+                if on_progress and len(graph_rows) % progress_every == 0:
+                    on_progress(pd.DataFrame(rows), pd.DataFrame(graph_rows), cps)
             except Exception as e:
                 log(f"skip {inst.instance_id}: {type(e).__name__}: {e}")
     return pd.DataFrame(rows), pd.DataFrame(graph_rows), cps

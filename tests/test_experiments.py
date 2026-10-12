@@ -25,3 +25,13 @@ def test_experiments_use_dev_instances_only_and_report_every_variant(fixrepo, em
     assert base.margin_vs_baseline == 0.0 and base["recall@10"] == 1.0
     md = ex.markdown(summary, graph_rows, cps)
     assert "dev instances only" in md and "| candidates k=200, 4 chunks |" in md and "1.000" in md
+
+
+def test_progress_callback_leaves_partial_results(fixrepo, embedder, tmp_path):
+    repo, a, b = fixrepo
+    df = make(a, b, ["2020-01-01T00:00:00Z", "2020-02-01T00:00:00Z"])
+    split = {"cutoff": "2025-01-01T00:00:00+00:00", "held_out_repos": []}
+    seen = []
+    ex.run_experiments(df, split, embedder, tmp_path / "r", tmp_path / "e", Params(), url_for=lambda r: str(repo), log=lambda s: None,
+                       on_progress=lambda rows, g, c: seen.append(rows.instance_id.nunique()), progress_every=1)
+    assert seen == [1, 2]   # a cancelled run would still have written the first instance's results

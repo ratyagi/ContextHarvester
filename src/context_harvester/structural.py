@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import math
 import re
+import warnings
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -42,7 +43,9 @@ IMPORT_RE = re.compile(r"^[ \t]*import[ \t]+([^\n#;]+)", re.M)
 
 def _ast_imports(text: str) -> list[tuple]:
     try:
-        tree = ast.parse(text)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # repos contain strings like '\L' that make the parser emit SyntaxWarning noise
+            tree = ast.parse(text)
     except (SyntaxError, ValueError, RecursionError):
         return []
     out: list[tuple] = []

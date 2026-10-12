@@ -285,17 +285,24 @@ def experiment(
     from . import split as sp
     from .semantic import MiniLMEmbedder
 
-    rows, graph_rows, cps = ex.run_experiments(_read(instances), sp.load(split_file), MiniLMEmbedder(), CACHE / "repos", CACHE / "emb", _load_params(None), limit or None)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    def write(rows, graph_rows, cps, partial=False):
+        summary = ex.summarize(rows, graph_rows, cps)
+        rows.to_parquet(f"{out}.parquet", index=False)
+        summary.to_parquet(f"{out}_summary.parquet", index=False)
+        md = ex.markdown(summary, graph_rows, cps)
+        if partial:
+            md = f"> PARTIAL: written mid-run after {len(graph_rows)} dev instances; the run did not finish.\n\n" + md
+        Path(f"{out}.md").write_text(md + "\n")
+        return md
+
+    rows, graph_rows, cps = ex.run_experiments(_read(instances), sp.load(split_file), MiniLMEmbedder(), CACHE / "repos", CACHE / "emb", _load_params(None), limit or None,
+                                               on_progress=lambda r, g, c: write(r, g, c, partial=True))
     if rows.empty:
         typer.echo("no dev instances evaluated", err=True)
         raise typer.Exit(1)
-    summary = ex.summarize(rows, graph_rows, cps)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    rows.to_parquet(f"{out}.parquet", index=False)
-    summary.to_parquet(f"{out}_summary.parquet", index=False)
-    md = ex.markdown(summary, graph_rows, cps)
-    Path(f"{out}.md").write_text(md + "\n")
-    typer.echo(md)
+    typer.echo(write(rows, graph_rows, cps))
 
 
 @app.command()
