@@ -116,7 +116,7 @@ def _rank_text(repo, query, base_commit, budget, no_rerank, as_json, replay_gold
 def rank(
     repo: str = typer.Argument(..., help="GitHub URL or owner/name"),
     issue: int = typer.Argument(..., help="Issue number"),
-    budget: int = typer.Option(20000, help="Token budget for files to read"),
+    budget: int = typer.Option(60000, help="Token budget for files to read (stops at the budget, not a file count)"),
     no_rerank: bool = typer.Option(False, help="Skip the LLM rerank; use fusion output"),
     scope: str = typer.Option("all", help="'all' embeds every file (default); 'candidates' embeds only the top lexical hits, so cost does not grow with repo size"),
     candidate_k: int = typer.Option(300, help="Candidates embedded when --scope candidates"),
@@ -136,7 +136,7 @@ def rank(
 def replay(
     repo: str = typer.Argument(...),
     issue: int = typer.Argument(..., help="A CLOSED issue whose merged fix is known"),
-    budget: int = typer.Option(20000),
+    budget: int = typer.Option(60000),
     no_rerank: bool = typer.Option(False),
     scope: str = typer.Option("all"),
     candidate_k: int = typer.Option(300),

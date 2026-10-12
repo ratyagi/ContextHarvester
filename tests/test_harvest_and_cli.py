@@ -87,7 +87,7 @@ def test_replay_snapshots_before_fix_and_grades(fixrepo, tmp_path, monkeypatch):
     assert res.exit_code == 0, res.output
     assert "the fix is NOT in the index" in res.stdout and "REPLAY vs merged fix" in res.stdout
     assert "pkg/parser.py" in res.stdout and "lower bound" in res.stdout
-    assert "fusion top-10 surfaced" in res.stdout and "within 20000-token budget" in res.stdout  # graded before the budget, not after
+    assert "fusion top-10 surfaced" in res.stdout and "within 60000-token budget" in res.stdout  # graded before the budget, not after
 
 
 def test_github_client_waits_out_rate_limit_then_succeeds():

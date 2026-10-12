@@ -39,6 +39,7 @@ Worktree snapshot, forward time split frozen to `corpus/split.json`, tuning on d
 5. The "naive embedding" baseline uses the same chunked-and-pooled per-file vector as the semantic retriever, so the ablation isolates fusion and the graph rather than the embedding recipe.
 6. Gemini is called through the standard endpoint, not the batch API. Batch can be added for large eval runs.
 7. One tuned parameter set (`corpus/tuned_params.json`) is used for all sources, tuned on dev instances of both.
+8. **Approved by the owner on Oct 12, 2026:** the default token budget for `ch rank` and `ch replay` is 60,000 (was 20,000). The PRD says to stop at the token budget but names no default. At 20,000 the demo returned one or two files on repos with large files, and recall at a 20k budget was 0.476 (SWE-bench) and 0.284 (self-harvested) against 0.795 and 0.687 at 10 files. The evaluation's fixed budgets (10k to 160k) are unchanged, so no published number moves. Agents can still pass `--budget` per call.
 
 ## Open PRD questions (need a person)
 
