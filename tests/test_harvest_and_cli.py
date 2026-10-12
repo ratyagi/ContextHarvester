@@ -65,6 +65,7 @@ def test_rank_command_prints_ranked_files_json(fixrepo, tmp_path, monkeypatch):
     out = json.loads(res.stdout[res.stdout.index("{"):])
     assert out["mode"] == "fusion" and out["files"][0]["path"] == "pkg/parser.py"
     assert out["files"][0]["cumulative_tokens"] == out["files"][0]["tokens"] and out["files"][0]["reason"]
+    assert {"clone_fetch", "checkout_and_read", "files_indexed", "bm25_index", "embed_index", "import_graph", "search"} <= set(out["timings"])
 
 
 def test_replay_snapshots_before_fix_and_grades(fixrepo, tmp_path, monkeypatch):

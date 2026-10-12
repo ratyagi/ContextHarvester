@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import random
+import time
 from dataclasses import asdict, dataclass
 
 from .files import RepoFile
@@ -61,9 +62,14 @@ def random_ranking(paths: list[str], seed: str) -> list[str]:
 class Retriever:
     def __init__(self, files: list[RepoFile], embedder: Embedder, cache: EmbedCache | None = None):
         self.files = files
+        t0 = time.perf_counter()
         self.lex = LexicalIndex(files)
-        self.sem = SemanticIndex(files, embedder, cache)
+        t1 = time.perf_counter()
+        self.sem = SemanticIndex(files, embedder, cache)  # embeds every file not already cached: the dominant cold cost
+        t2 = time.perf_counter()
         self.graph = build_graph(files)
+        t3 = time.perf_counter()
+        self.timings = {"bm25_index": t1 - t0, "embed_index": t2 - t1, "import_graph": t3 - t2}
 
     def retrieve(self, query: str, query_mode: str = "full", sem_mode: str = "pooled") -> Retrieved:
         q_lex, q_emb = focus_query(query) if query_mode == "focused" else (query, query)

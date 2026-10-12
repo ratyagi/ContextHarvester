@@ -29,15 +29,21 @@ def _tag(s: str) -> str:
     return s.replace("/", "__")
 
 
-def _print_ranked(ranked, mode: str, budget: int, as_json: bool, elapsed: float) -> None:
+def _timing_line(t: dict) -> str:
+    return "timing: " + " | ".join(f"{k} {v:.1f}s" if isinstance(v, float) else f"{k} {v}" for k, v in t.items())
+
+
+def _print_ranked(ranked, mode: str, budget: int, as_json: bool, elapsed: float, timings: dict | None = None) -> None:
     if as_json:
-        print(json.dumps({"mode": mode, "token_budget": budget, "seconds": round(elapsed, 1), "files": [
+        print(json.dumps({"mode": mode, "token_budget": budget, "seconds": round(elapsed, 1), "timings": {k: (round(v, 1) if isinstance(v, float) else v) for k, v in (timings or {}).items()}, "files": [
             {"path": r.path, "reason": r.reason, "tokens": r.tokens, "cumulative_tokens": r.cumulative_tokens} for r in ranked]}, indent=1))
         return
     typer.echo(f"{'#':>2}  {'file':<56} {'tokens':>7} {'cumulative':>10}  reason")
     for i, r in enumerate(ranked, 1):
         typer.echo(f"{i:>2}  {r.path:<56} {r.tokens:>7} {r.cumulative_tokens:>10}  {r.reason}")
     typer.echo(f"\nranked by: {mode} | budget {budget} tokens | {elapsed:.1f}s")
+    if timings:
+        typer.echo(_timing_line(timings))
 
 
 def _signals(retriever, query, params, paths):
@@ -76,18 +82,24 @@ def _rank_text(repo, query, base_commit, budget, no_rerank, as_json, replay_gold
 
     t0 = time.time()
     rd = ensure_clone(f"https://github.com/{repo}.git", repo_dir(CACHE / "repos", repo))
+    t_clone = time.time() - t0
     commit = base_commit or default_branch_head(rd)
     emb = MiniLMEmbedder()
     params = _load_params(None)
-    with worktree(rd, commit) as wt:
+    t1 = time.time()
+    with worktree(rd, commit) as wt:  # blobless clone: this checkout fetches the file contents
         files = list_files(wt)
+    t_files = time.time() - t1
     by_path = {f.path: f for f in files}
     q = strip_fix_text(query)
     r = Retriever(files, emb, EmbedCache(CACHE / "emb" / _tag(repo), emb.name))
+    t2 = time.time()
     ranks, nbrs, full = _signals(r, q, params, list(by_path))
+    t_search = time.time() - t2
     llm = None if no_rerank else FallbackLLM()
     ranked, mode = rerank(query, full, by_path, ranks, nbrs, budget, llm)
-    _print_ranked(ranked, mode, budget, as_json, time.time() - t0)
+    timings = {"clone_fetch": t_clone, "checkout_and_read": t_files, "files_indexed": len(files), **r.timings, "search": t_search}
+    _print_ranked(ranked, mode, budget, as_json, time.time() - t0, timings)
     if replay_gold is not None:
         gold = set(replay_gold) & set(by_path)
         fused10 = full[:10]  # graded before the token budget, like the evaluation's top-10, so it is comparable to BM25
