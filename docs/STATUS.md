@@ -16,7 +16,7 @@ The session that built this has an egress policy that blocks `github.com` (other
 | Snapshot-leakage test passing | **Done.** `tests/test_snapshot_leakage.py`. The same guard runs on every evaluated instance and failures are listed. |
 | Static results live on GitHub Pages | **Done.** Deployed via the `pages` workflow (confirmed by the owner on Oct 12, 2026). Live at https://ratyagi.github.io/ContextHarvester/ (linked from the README). |
 | README states method, number, limitation in first three paragraphs | **Done.** Method, the number (with the control that disagrees), and the lower-bound limitation. |
-| Clay corpus build recorded, column config screenshotted, `corpus/repos.csv` committed | **Partly done.** Built in Clay on the Growth trial; `corpus/repos.csv` (20 repos, 3 held out) and the raw export are committed and covered by `tests/test_corpus.py`. Screen recording done and linked ([video](https://youtu.be/dfvmURSpRbc), `docs/evidence/README.md`). **Still open:** column-config screenshots and the plan-page screenshot under `docs/evidence/`. |
+| Clay corpus build recorded, column config screenshotted, `corpus/repos.csv` committed | **Partly done.** Built in Clay on the Growth trial; `corpus/repos.csv` (20 repos, 3 held out) and the raw export are committed and covered by `tests/test_corpus.py`. Screen recording done and linked ([video](https://youtu.be/dfvmURSpRbc), `docs/evidence/README.md`). Screenshots are in `docs/evidence/`: plan allowance, workbook, HTTP API accounts, finished table, and the Use AI column config. **Not captured:** settings screenshots of the `gh`, `fixes_raw` and `actions` HTTP API columns (the recording shows them). |
 
 ## Pipeline stages
 
