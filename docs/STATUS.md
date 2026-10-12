@@ -20,7 +20,7 @@ The session that built this has an egress policy that blocks `github.com` (other
 
 ## In progress: scalable cold path (owner chose the option that scales, Oct 12, 2026)
 
-Built behind options, defaults unchanged so the committed results stay reproducible: candidate-scoped semantic search (embeds only the top lexical hits, cost bounded by K, not repo size), a regex import extractor, and memoized tokenization. Tested for equivalence and bounds. **Not yet measured:** the recall cost (run the `experiments` workflow, dev instances only) and the cold time on a large repo (run the `demo` workflow with `scope=candidates`). The PRD's semantic stage says one embedding per file for every file, so adopting this as the default needs a PRD amendment, which waits for those numbers and the owner's approval.
+Built behind options, defaults unchanged so the committed results stay reproducible: candidate-scoped semantic search (embeds only the top lexical hits, cost bounded by K, not repo size), a regex import extractor, and memoized tokenization. Tested for equivalence and bounds. **Measured so far:** cold rank on `huggingface/transformers` fell from 742s to 70s (embedding 697s to 51s, import graph 22s to 1.4s, BM25 8s to 4s) with K=300 candidates, 4 chunks, regex graph; still about 10s over the 60s goal (see `docs/FINDINGS.md`). **Not yet measured:** the recall cost, which comes from the dev-only `experiments` run (running). The PRD's semantic stage says one embedding per file for every file, so adopting this as the default needs a PRD amendment, which waits for those numbers and the owner's approval.
 
 ## Pipeline stages
 

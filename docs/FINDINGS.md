@@ -51,3 +51,21 @@ What this establishes:
 4. A separate observation from the same runs: with the default 20,000-token budget the ranker returned a single file for both transformers issues, because the top file alone was 10k to 27k tokens. The replay's "shown within budget" list was empty for that reason.
 
 What it does not establish: how much of the cold time a faster approach would save, and what any speed-up costs in recall. Both need dev-set measurements before any change is adopted.
+
+### Scalable cold path, measured (transformers, same repo and issue as above)
+
+`scope=candidates` (embed only the top 300 lexical hits, at most 4 chunks each), regex import graph, memoized tokenization. Same runner type, Oct 12, 2026. Recall cost is **not yet measured**: that comes from the dev-only `experiments` run.
+
+| Stage | Before (all files, AST graph) | After (candidates K=300, 4 chunks, regex graph) |
+|---|---|---|
+| Clone / fetch | 5.1s | 4.7s |
+| Checkout and read files | 6.0s | 6.2s |
+| BM25 index | 8.3s | 4.1s |
+| Embedding | 696.7s (4,957 files) | 51.4s (at most 300 files) |
+| Import graph | 21.9s | 1.4s |
+| **Cold rank, wall clock** | **742s** | **70s** |
+
+- The 60-second goal is still missed by about 10 seconds on this repo, but the cost no longer grows with repo size in the embedding stage: it is bounded by K times the chunk cap.
+- Embedding is still 76% of the remaining time (51.4s of 67.9s in-tool). At the rate this implies, roughly 23 chunks per second on this runner, K=150 or fewer chunks per file would bring the total under 60s. Which setting to adopt depends on what each costs in recall, which the dev experiments measure.
+- Clone plus checkout is about 11s and not reduced by anything here.
+- The replay took 53s wall, but it reuses embeddings cached by the rank step, so it is not a cold figure.
