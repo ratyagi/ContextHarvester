@@ -9,6 +9,8 @@ on:
       closed_issue: { description: "a closed issue number with a merged Fixes #N PR (optional)", required: false }
       scope: { description: "semantic scope: all (default, embeds every file) or candidates (embeds only top lexical hits)", required: false, default: "all" }
       graph_mode: { description: "import extraction: ast (default) or regex (faster)", required: false, default: "ast" }
+      candidate_k: { description: "files embedded when scope=candidates", required: false, default: "300" }
+      candidate_chunks: { description: "chunks per file when scope=candidates", required: false, default: "4" }
 jobs:
   demo:
     runs-on: ubuntu-latest
@@ -31,13 +33,13 @@ jobs:
       - name: rank (open issue, cold repo)
         run: |
           start=$(date +%s)
-          ch rank "${{ inputs.repo }}" "${{ inputs.open_issue }}" --scope "${{ inputs.scope }}" --graph-mode "${{ inputs.graph_mode }}" | tee rank.txt
+          ch rank "${{ inputs.repo }}" "${{ inputs.open_issue }}" --scope "${{ inputs.scope }}" --graph-mode "${{ inputs.graph_mode }}" --candidate-k "${{ inputs.candidate_k }}" --candidate-chunks "${{ inputs.candidate_chunks }}" | tee rank.txt
           echo "COLD RANK WALL TIME: $(( $(date +%s) - start ))s" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: replay (closed issue vs merged fix)
         if: ${{ inputs.closed_issue != '' }}
         run: |
           start=$(date +%s)
-          ch replay "${{ inputs.repo }}" "${{ inputs.closed_issue }}" --scope "${{ inputs.scope }}" --graph-mode "${{ inputs.graph_mode }}" | tee replay.txt
+          ch replay "${{ inputs.repo }}" "${{ inputs.closed_issue }}" --scope "${{ inputs.scope }}" --graph-mode "${{ inputs.graph_mode }}" --candidate-k "${{ inputs.candidate_k }}" --candidate-chunks "${{ inputs.candidate_chunks }}" | tee replay.txt
           echo "REPLAY WALL TIME: $(( $(date +%s) - start ))s" | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with: { name: demo-output, path: "*.txt" }
