@@ -33,3 +33,21 @@ Without issues that contain a patch or name a gold file: SWE-bench 0.634 (BM25) 
 - SWE-bench repos are likely over-represented in model training data, and the 127 test instances are Django-heavy (49). The self-harvested result is what the PRD designates as the control for this. Why the two disagree is untested.
 - The graph step may hurt where fixes span few import-connected files, or where hub modules flood the neighbor list. Untested; the grid in `corpus/tuning_grid.parquet` is the starting point.
 - The paired interval for the graph is now in the report (finding 5). It is inconclusive on SWE-bench and slightly negative on self-harvested, so the graph step should not be presented as a demonstrated contributor.
+
+## Performance: the under-60-seconds goal (PRD Goal 1)
+
+Measured with the `demo` workflow on a GitHub-hosted runner (Oct 12, 2026), using the per-stage timing line `ch rank` prints. Each run also includes cloning, checkout and reading the files. Model weights were downloaded in a separate earlier step.
+
+| Run | Files indexed | Wall time | Embedding | BM25 index | Import graph | Clone + checkout |
+|---|---|---|---|---|---|---|
+| `pallets/jinja`, cold rank | not recorded | 21s | not broken out (older build) | not broken out | not broken out | not broken out |
+| `huggingface/transformers`, cold rank | 4,957 | **742s** | **696.7s** | 8.3s | 21.9s | 5.1s + 6.0s |
+| `huggingface/transformers`, replay (embedding cache from the rank step likely reused) | 4,956 | 57s | 19.0s | 8.2s | 21.9s | 0.6s + 2.1s |
+
+What this establishes:
+1. The goal holds for small and mid-sized repos and **does not hold for a large repo**. The 60-second target is missed by more than a factor of ten on transformers.
+2. Nearly all of the cold time is the MiniLM embedding of every file (94%). Cloning and BM25 are small.
+3. Even with embeddings cached, transformers takes about 52s inside the tool, because the BM25 index (8s) and the import graph (22s) each scale with file count and the rest is loading and searching the cached vectors. A cached run is close to the limit too.
+4. A separate observation from the same runs: with the default 20,000-token budget the ranker returned a single file for both transformers issues, because the top file alone was 10k to 27k tokens. The replay's "shown within budget" list was empty for that reason.
+
+What it does not establish: how much of the cold time a faster approach would save, and what any speed-up costs in recall. Both need dev-set measurements before any change is adopted.
