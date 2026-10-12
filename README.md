@@ -1,5 +1,7 @@
 # Context Harvester
 
+Results page: https://ratyagi.github.io/ContextHarvester/
+
 Given a repository and an issue, Context Harvester returns the ranked minimal set of files a coding agent needs to read to fix it, with a one-line reason per file and a running token count. It fuses three independent signals: BM25 over file contents, MiniLM embeddings in FAISS, and a one-hop import graph, using reciprocal rank fusion. A single LLM pass at the end drops files and writes the reasons, stopping at a token budget. The LLM does not do the retrieval.
 
 **The number:** file-level recall@10 against the files the merged fix touched, on a forward time split with the fix excluded from the index. On SWE-bench Verified (127 instances after the 2022-05-06 cutoff, filtered gold) the full pipeline reaches **0.795 vs 0.699 for BM25, a margin of +0.096** (95% CI +0.034 to +0.162, paired bootstrap). On the issues with no patch or file name in the text it is 0.765 vs 0.634 (+0.132, CI +0.047 to +0.218). **The independent control does not agree.** On self-harvested `Fixes #N` links from 17 repos SWE-bench never covered (350 instances) the full pipeline scores 0.687 vs BM25's 0.684 (+0.003, CI -0.028 to +0.032), and on 3 held-out repos (90 instances) 0.832 vs 0.832. Embeddings alone lose to BM25 on both sources, and the import graph's own contribution is not statistically established on either (paired CI includes zero). Sources are reported separately and never pooled, and the LLM rerank stage is not part of these numbers. Full tables are at the bottom, the interpretation is in [`docs/FINDINGS.md`](docs/FINDINGS.md), the spec is [`docs/PRD.md`](docs/PRD.md), and the status of every PRD item is in [`docs/STATUS.md`](docs/STATUS.md).
@@ -161,4 +163,5 @@ The evaluation corpus (`corpus/repos.csv`, 20 Python repos, 3 held out) was buil
 | Embeddings only (single pooled vector/file) | 0.479 | 0.631 (0.532, 0.724) | 0.806 | -0.003 (-0.115, 0.110) | - | 26866 |
 | BM25 + embeddings (RRF, no graph) | 0.628 | 0.723 (0.633, 0.811) | 0.832 | +0.090 (0.022, 0.163) | - | 36323 |
 | BM25 + embeddings + import graph (RRF) | 0.698 | 0.765 (0.679, 0.849) | 0.886 | +0.132 (0.047, 0.218) | +0.042 (-0.026, 0.110) | 27290 |
+
 <!-- RESULTS:END -->

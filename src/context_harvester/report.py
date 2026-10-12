@@ -122,7 +122,8 @@ def write_outputs(per: pd.DataFrame, excluded: pd.DataFrame, out_dir: Path, web_
 
 def update_readme(readme: Path, summary: pd.DataFrame) -> None:
     text = Path(readme).read_text()
-    block = f"{README_START}\n{build_readme_block(summary)}\n{README_END}"
+    # blank line before the end marker: GitHub otherwise swallows the comment into the last table and breaks rendering
+    block = f"{README_START}\n{build_readme_block(summary)}\n\n{README_END}"
     if README_START in text:
         text = text[: text.index(README_START)] + block + text[text.index(README_END) + len(README_END):]
     else:

@@ -40,6 +40,7 @@ def test_run_eval_reports_all_methods_and_catches_leakage(fixrepo, embedder, tmp
     readme.write_text("x\n<!-- RESULTS:START -->\nPLACEHOLDER\n<!-- RESULTS:END -->\n")
     report.update_readme(readme, out)
     assert "BM25 over file contents" in readme.read_text() and "PLACEHOLDER" not in readme.read_text()
+    assert "\n\n<!-- RESULTS:END -->" in readme.read_text()   # regression: last table must not run into the marker
 
 
 def test_cli_help_lists_commands():
