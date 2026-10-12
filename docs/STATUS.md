@@ -16,7 +16,7 @@ The session that built this has an egress policy that blocks `github.com` (other
 | Snapshot-leakage test passing | **Done.** `tests/test_snapshot_leakage.py`. The same guard runs on every evaluated instance and failures are listed. |
 | Static results live on GitHub Pages | **Done.** Deployed via the `pages` workflow (confirmed by the owner on Oct 12, 2026). Live at https://ratyagi.github.io/ContextHarvester/ (linked from the README). |
 | README states method, number, limitation in first three paragraphs | **Done.** Method, the number (with the control that disagrees), and the lower-bound limitation. |
-| One substantive issue or PR on `clay-run/agent-plugins` | **Not done.** Needs a person with a Clay account; this session has no access to that repo. |
+| One substantive issue or PR on `clay-run/agent-plugins` | **Drafted, not posted.** That repo's `CONTRIBUTING.md` says PRs are not accepted and issues are welcome, so the deliverable is an issue. Draft in `docs/clay_issue_draft.md`, grounded in the repo at `a813258`. The owner must post it from their own account; then add the link here. |
 | Clay corpus build recorded, column config screenshotted, `corpus/repos.csv` committed | **Partly done.** Built in Clay on the Growth trial; `corpus/repos.csv` (20 repos, 3 held out) and the raw export are committed and covered by `tests/test_corpus.py`. Screen recording done and linked ([video](https://youtu.be/dfvmURSpRbc), `docs/evidence/README.md`). **Still open:** column-config screenshots and the plan-page screenshot under `docs/evidence/`. |
 
 ## Pipeline stages
